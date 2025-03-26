@@ -7,13 +7,16 @@ setup:
 
 init: db-reset
 	. venv/bin/activate && flask db upgrade
-	. venv/bin/activate && python load_test_data.py
 
 run:
 	. venv/bin/activate && flask run
 
 test:
 	. venv/bin/activate && python -m pytest
+	. venv/bin/activate && python load_test_data.py
+
+test-data: setup
+	python3.11 -m venv venv
 
 clean:
 	rm -rf venv
