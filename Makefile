@@ -9,7 +9,7 @@ init: db-reset
 	. venv/bin/activate && flask db upgrade
 
 run:
-	. venv/bin/activate && flask run
+	. venv/bin/activate && FLASK_ENV=development FLASK_DEBUG=1 python -m flask run
 
 test:
 	. venv/bin/activate && python -m pytest
