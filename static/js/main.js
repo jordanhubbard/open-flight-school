@@ -418,34 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // If we're on the booking page
-    if (document.getElementById('bookingForm')) {
-        loadAvailableAircraft();
-        loadAvailableInstructors();
-        getBookings(); // Load existing bookings
-        
-        // Handle booking form submission
-        const bookingForm = document.getElementById('bookingForm');
-        bookingForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
-            const aircraftId = document.getElementById('aircraftSelect').value;
-            const instructorId = document.getElementById('instructorSelect').value;
-            
-            const bookingData = {
-                start_time: startTime,
-                end_time: endTime,
-                aircraft_id: aircraftId,
-                instructor_id: instructorId
-            };
-            
-            await createBooking(bookingData);
-        });
-    }
-
-    // Initialize calendar if we're on the booking page
+    // Initialize calendar if it exists
     const calendarEl = document.getElementById('calendar');
     if (calendarEl) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -453,45 +426,36 @@ document.addEventListener('DOMContentLoaded', function() {
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: ''  // View selector is handled by our custom dropdown
+                right: ''
             },
+            height: 'auto',
+            allDaySlot: false,
             slotMinTime: '06:00:00',
             slotMaxTime: '22:00:00',
-            allDaySlot: false,
-            height: 'auto',
-            expandRows: true,
-            slotEventOverlap: false,
-            nowIndicator: true,
-            dayMaxEvents: true,
-            eventTimeFormat: {
-                hour: 'numeric',
-                minute: '2-digit',
-                meridiem: 'short'
-            },
-            slotLabelFormat: {
-                hour: 'numeric',
-                minute: '2-digit',
-                meridiem: 'short'
-            },
             eventClick: function(info) {
-                // Handle event click - could show details or edit modal
-                console.log('Event clicked:', info.event);
+                handleEventClick(info.event);
             }
         });
-        
         calendar.render();
-        
-        // Handle view change from dropdown
-        const viewSelect = document.getElementById('calendarViewSelect');
-        if (viewSelect) {
-            viewSelect.addEventListener('change', function() {
-                calendar.changeView(this.value);
-            });
-        }
-        
-        // Load initial bookings
-        getBookings();
     }
+
+    // Load aircraft and instructors if on booking page
+    if (document.getElementById('aircraftTableBody') && document.getElementById('instructorsTableBody')) {
+        loadAvailableAircraft();
+        loadAvailableInstructors();
+    }
+
+    // Add event listener for booking form
+    const bookingForm = document.getElementById('bookingForm');
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            bookNow();
+        });
+    }
+
+    // Load existing bookings
+    getBookings();
 });
 
 // Aircraft Management
@@ -541,7 +505,7 @@ async function loadAircraft() {
                     <td>${a.make_model}</td>
                     <td>${a.tail_number}</td>
                     <td>${a.type}</td>
-                    <td>Available</td>
+                    <td>${a.available ? 'Available' : 'Unavailable'}</td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="editAircraft(${a.id})">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteAircraft(${a.id})">Delete</button>
@@ -615,6 +579,7 @@ async function loadInstructors() {
                     <td>${i.email}</td>
                     <td>${i.phone}</td>
                     <td>${i.ratings || 'No ratings'}</td>
+                    <td>${i.available ? 'Available' : 'Unavailable'}</td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="editInstructor(${i.id})">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteInstructor(${i.id})">Delete</button>
@@ -645,16 +610,7 @@ async function loadAvailableAircraft() {
         const response = await fetch('/api/available-aircraft');
         if (response.ok) {
             const aircraft = await response.json();
-            const select = document.getElementById('aircraftSelect');
-            if (select) {
-                select.innerHTML = '';
-                aircraft.forEach(a => {
-                    const option = document.createElement('option');
-                    option.value = a.id;
-                    option.textContent = `${a.make_model} (${a.tail_number})`;
-                    select.appendChild(option);
-                });
-            }
+            displayAircraft(aircraft);
         } else {
             showError('Failed to load available aircraft');
         }
@@ -669,16 +625,7 @@ async function loadAvailableInstructors() {
         const response = await fetch('/api/available-instructors');
         if (response.ok) {
             const instructors = await response.json();
-            const select = document.getElementById('instructorSelect');
-            if (select) {
-                select.innerHTML = '';
-                instructors.forEach(i => {
-                    const option = document.createElement('option');
-                    option.value = i.id;
-                    option.textContent = `${i.name} - ${i.ratings || 'No ratings'}`;
-                    select.appendChild(option);
-                });
-            }
+            displayInstructors(instructors);
         } else {
             showError('Failed to load available instructors');
         }
@@ -688,34 +635,70 @@ async function loadAvailableInstructors() {
     }
 }
 
+function displayAircraft(aircraft) {
+    const listContainer = document.getElementById('aircraftList');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    aircraft.forEach(plane => {
+        const status = plane.status || plane.availability || 'available';
+        const item = document.createElement('div');
+        item.className = `list-group-item list-group-item-action ${status === 'available' ? '' : 'disabled'}`;
+        item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <div>
+                    <input type="radio" name="aircraft" value="${plane.id}" class="form-check-input me-2"
+                           ${status === 'available' ? '' : 'disabled'}>
+                    <strong>${plane.make_model}</strong> (${plane.tail_number})
+                </div>
+                <span class="badge ${status === 'available' ? 'bg-success' : 'bg-warning'}">
+                    ${status === 'available' ? 'Available' : 'Unavailable'}
+                </span>
+            </div>
+            <small class="text-muted">${plane.type || 'N/A'}</small>
+        `;
+        listContainer.appendChild(item);
+    });
+}
+
+function displayInstructors(instructors) {
+    const listContainer = document.getElementById('instructorList');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    instructors.forEach(instructor => {
+        const status = instructor.status || instructor.availability || 'available';
+        const item = document.createElement('div');
+        item.className = `list-group-item list-group-item-action ${status === 'available' ? '' : 'disabled'}`;
+        item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <div>
+                    <input type="radio" name="instructor" value="${instructor.id}" class="form-check-input me-2"
+                           ${status === 'available' ? '' : 'disabled'}>
+                    <strong>${instructor.name}</strong>
+                </div>
+                <span class="badge ${status === 'available' ? 'bg-success' : 'bg-warning'}">
+                    ${status === 'available' ? 'Available' : 'Unavailable'}
+                </span>
+            </div>
+            <small class="text-muted">${instructor.email} | ${instructor.phone || 'N/A'}</small>
+        `;
+        listContainer.appendChild(item);
+    });
+}
+
 function displayBookings(bookings) {
-    const container = document.getElementById('bookingsList');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
+    const tbody = document.getElementById('bookingsList');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
     if (bookings.length === 0) {
-        container.innerHTML = '<p class="text-muted">No bookings found.</p>';
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="text-center">No bookings found.</td>';
+        tbody.appendChild(row);
         return;
     }
-    
-    const table = document.createElement('table');
-    table.className = 'table table-striped';
-    table.innerHTML = `
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Aircraft</th>
-                <th>Instructor</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    `;
-    
-    const tbody = table.querySelector('tbody');
+
     bookings.forEach(booking => {
         const startDate = new Date(booking.start_time);
         const endDate = new Date(booking.end_time);
@@ -726,35 +709,115 @@ function displayBookings(bookings) {
             <td>${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()}</td>
             <td>${booking.aircraft || 'N/A'}</td>
             <td>${booking.instructor || 'N/A'}</td>
-            <td>${booking.status || 'Pending'}</td>
+            <td>
+                <span class="badge ${booking.status === 'confirmed' ? 'bg-success' : 'bg-warning'}">
+                    ${booking.status || 'pending'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="editBooking(${booking.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteBooking(${booking.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
         `;
         tbody.appendChild(row);
     });
-    
-    container.appendChild(table);
 }
 
-async function createBooking(bookingData) {
-    try {
-        const response = await fetch('/api/bookings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData)
+function editBooking(bookingId) {
+    // Find the booking in the current bookings list
+    fetch(`/api/bookings/${bookingId}`)
+        .then(response => response.json())
+        .then(booking => {
+            document.getElementById('editBookingId').value = bookingId;
+            document.getElementById('editStartTime').value = booking.start_time;
+            document.getElementById('editEndTime').value = booking.end_time;
+            
+            const modal = new bootstrap.Modal(document.getElementById('editBookingModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Failed to load booking details');
         });
-        
-        const data = await response.json();
-        if (response.ok) {
-            showSuccess('Booking created successfully!');
-            getBookings();
-        } else {
-            showError(data.error || 'Failed to create booking');
-        }
-    } catch (error) {
-        showError('An error occurred while creating the booking');
-    }
 }
+
+function deleteBooking(bookingId) {
+    document.getElementById('editBookingId').value = bookingId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+}
+
+// Add event listener for delete confirmation
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function() {
+            const bookingId = document.getElementById('editBookingId').value;
+            
+            fetch(`/api/bookings/${bookingId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showSuccess('Booking cancelled successfully');
+                    bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+                    getBookings();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('An error occurred while cancelling the booking');
+            });
+        });
+    }
+
+    // Add event listener for saving edited booking
+    const saveBookingBtn = document.getElementById('saveBookingBtn');
+    if (saveBookingBtn) {
+        saveBookingBtn.addEventListener('click', function() {
+            const bookingId = document.getElementById('editBookingId').value;
+            const startTime = document.getElementById('editStartTime').value;
+            const endTime = document.getElementById('editEndTime').value;
+
+            if (!startTime || !endTime) {
+                showError('Please select both start and end times');
+                return;
+            }
+
+            fetch(`/api/bookings/${bookingId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    start_time: startTime,
+                    end_time: endTime
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showSuccess('Booking updated successfully');
+                    bootstrap.Modal.getInstance(document.getElementById('editBookingModal')).hide();
+                    getBookings();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('An error occurred while updating the booking');
+            });
+        });
+    }
+});
 
 // Modal handling
 function showRegisterModal() {
@@ -891,4 +954,30 @@ async function apiCall(url, method = 'GET', data = null) {
     } finally {
         hideLoading(overlay);
     }
+}
+
+function bookNow() {
+    const selectedAircraft = document.querySelector('input[name="aircraft"]:checked');
+    const selectedInstructor = document.querySelector('input[name="instructor"]:checked');
+    
+    if (!selectedAircraft || !selectedInstructor) {
+        showError('Please select both an aircraft and an instructor');
+        return;
+    }
+    
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    
+    if (!startTime || !endTime) {
+        showError('Please select both start and end times');
+        return;
+    }
+    
+    // Create booking
+    createBooking({
+        aircraft_id: selectedAircraft.value,
+        instructor_id: selectedInstructor.value,
+        start_time: startTime,
+        end_time: endTime
+    });
 } 

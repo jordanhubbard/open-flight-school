@@ -60,7 +60,7 @@ function displayInstructors() {
             <td>${instructor.name}</td>
             <td>${instructor.email}</td>
             <td>${instructor.phone || ''}</td>
-            <td>${instructor.ratings.join(', ')}</td>
+            <td>${instructor.ratings || ''}</td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editInstructor(${instructor.id})">Edit</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteInstructor(${instructor.id})">Delete</button>
@@ -178,7 +178,7 @@ async function saveAircraft() {
         
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('aircraftModal')).hide();
-            loadAircraft();
+            loadData();
             showSuccess('Aircraft saved successfully');
         } else {
             const error = await response.json();
@@ -214,7 +214,7 @@ async function saveInstructor() {
         
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('instructorModal')).hide();
-            loadInstructors();
+            loadData();
             showSuccess('Instructor saved successfully');
         } else {
             const error = await response.json();
@@ -261,16 +261,17 @@ function editInstructor(id) {
         });
 }
 
+// Delete functions
 async function deleteAircraft(id) {
     if (!confirm('Are you sure you want to delete this aircraft?')) return;
-    
+
     try {
         const response = await fetch(`/api/admin/aircraft/${id}`, {
             method: 'DELETE'
         });
         
         if (response.ok) {
-            loadAircraft();
+            loadData();
             showSuccess('Aircraft deleted successfully');
         } else {
             const error = await response.json();
@@ -284,14 +285,14 @@ async function deleteAircraft(id) {
 
 async function deleteInstructor(id) {
     if (!confirm('Are you sure you want to delete this instructor?')) return;
-    
+
     try {
         const response = await fetch(`/api/admin/instructors/${id}`, {
             method: 'DELETE'
         });
         
         if (response.ok) {
-            loadInstructors();
+            loadData();
             showSuccess('Instructor deleted successfully');
         } else {
             const error = await response.json();
@@ -339,60 +340,34 @@ async function deleteBooking(id) {
     }
 }
 
+function showAddAircraftModal() {
+    document.getElementById('aircraftModalTitle').textContent = 'Add Aircraft';
+    document.getElementById('aircraftId').value = '';
+    document.getElementById('makeModel').value = '';
+    document.getElementById('tailNumber').value = '';
+    document.getElementById('type').value = '';
+    new bootstrap.Modal(document.getElementById('aircraftModal')).show();
+}
+
 function showAddInstructorModal() {
-    const form = document.createElement('form');
-    form.innerHTML = `
-        <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" class="form-control" id="name" required>
-        </div>
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" class="form-control" id="email" required>
-        </div>
-        <div class="form-group">
-            <label for="phone">Phone</label>
-            <input type="tel" class="form-control" id="phone" required>
-        </div>
-        <div class="form-group">
-            <label for="ratings">Ratings (comma-separated)</label>
-            <input type="text" class="form-control" id="ratings" placeholder="PPL, CPL, CFI, etc." required>
-        </div>
-    `;
-
-    showModal('Add Instructor', form, async () => {
-        const data = {
-            name: form.querySelector('#name').value,
-            email: form.querySelector('#email').value,
-            phone: form.querySelector('#phone').value,
-            ratings: form.querySelector('#ratings').value.split(',').map(r => r.trim()).filter(r => r)
-        };
-
-        try {
-            const response = await fetch('/api/admin/instructors', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) throw new Error('Failed to add instructor');
-            
-            const newInstructor = await response.json();
-            instructorData.push(newInstructor);
-            displayInstructors();
-        } catch (error) {
-            console.error('Error adding instructor:', error);
-            showError('Failed to add instructor');
-        }
-    });
+    document.getElementById('instructorModalTitle').textContent = 'Add Instructor';
+    document.getElementById('instructorId').value = '';
+    document.getElementById('instructorName').value = '';
+    document.getElementById('instructorEmail').value = '';
+    document.getElementById('instructorPhone').value = '';
+    document.getElementById('instructorRatings').value = '';
+    new bootstrap.Modal(document.getElementById('instructorModal')).show();
 }
 
 // Helper functions
 function showSuccess(message) {
-    // Implement success message display
-    alert(message);
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success alert-dismissible fade show';
+    successDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.insertBefore(successDiv, document.body.firstChild);
 }
 
 function showError(message) {
@@ -402,8 +377,5 @@ function showError(message) {
 
 // Initialize when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-    loadAircraft();
-    loadInstructors();
-    loadUsers();
-    loadBookings();
+    loadData();
 }); 

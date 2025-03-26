@@ -445,18 +445,37 @@ def get_all_bookings():
         'status': b.status
     } for b in bookings])
 
-@app.route('/api/admin/bookings/<int:id>', methods=['PUT'])
+@app.route('/api/bookings/<int:id>', methods=['PUT'])
 @login_required
-@admin_required
 def update_booking(id):
     booking = Booking.query.get_or_404(id)
+    
+    # Check if the booking belongs to the current user
+    if booking.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Only allow editing of pending or confirmed bookings
+    if booking.status not in ['pending', 'confirmed']:
+        return jsonify({'error': 'Cannot edit this booking'}), 400
+    
     data = request.get_json()
+    
+    # Check for conflicts with other bookings
+    conflicts = Booking.query.filter(
+        Booking.id != id,
+        ((Booking.aircraft_id == data.get('aircraft_id', booking.aircraft_id)) | 
+         (Booking.instructor_id == data.get('instructor_id', booking.instructor_id))) &
+        ((Booking.start_time <= data.get('end_time', booking.end_time.isoformat())) & 
+         (Booking.end_time >= data.get('start_time', booking.start_time.isoformat())))
+    ).first()
+    
+    if conflicts:
+        return jsonify({'error': 'Time slot is not available'}), 400
     
     booking.start_time = datetime.fromisoformat(data.get('start_time', booking.start_time.isoformat()))
     booking.end_time = datetime.fromisoformat(data.get('end_time', booking.end_time.isoformat()))
     booking.aircraft_id = data.get('aircraft_id', booking.aircraft_id)
     booking.instructor_id = data.get('instructor_id', booking.instructor_id)
-    booking.status = data.get('status', booking.status)
     
     db.session.commit()
     return jsonify({'message': 'Booking updated successfully'})
@@ -619,6 +638,32 @@ def update_user():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bookings/<int:id>/cancel', methods=['POST'])
+@login_required
+def cancel_booking(id):
+    booking = Booking.query.get_or_404(id)
+    
+    # Check if the booking belongs to the current user
+    if booking.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Only allow cancellation of pending or confirmed bookings
+    if booking.status not in ['pending', 'confirmed']:
+        return jsonify({'error': 'Cannot cancel this booking'}), 400
+    
+    booking.status = 'cancelled'
+    db.session.commit()
+    
+    return jsonify({'message': 'Booking cancelled successfully'})
+
+@app.route('/my-bookings')
+@login_required
+def my_bookings():
+    # Redirect admin users to admin dashboard
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard'))
+    return render_template('bookings.html')
 
 if __name__ == '__main__':
     app.run(debug=True) 
