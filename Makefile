@@ -33,4 +33,3 @@ clean-db: db-reset
 	. venv/bin/activate && flask db init
 	. venv/bin/activate && flask db migrate -m "Initial migration"
 	. venv/bin/activate && flask db upgrade
-	. venv/bin/activate && python load_test_data.py 
