@@ -4,6 +4,11 @@
 <div class="container mt-4">
     <h2>Book a Flight</h2>
     
+    <!-- Book Now Button - Moved to top -->
+    <div class="text-center mb-4">
+        <button class="btn btn-primary btn-lg" onclick="bookNow()">Book Now</button>
+    </div>
+    
     <!-- Available Aircraft Section -->
     <div class="card mb-4">
         <div class="card-header">
@@ -18,7 +23,6 @@
                             <th>MAKE/MODEL</th>
                             <th>TAIL NUMBER</th>
                             <th>TYPE</th>
-                            <th>STATUS</th>
                         </tr>
                     </thead>
                     <tbody id="aircraftTableBody">
@@ -43,7 +47,7 @@
                             <th>NAME</th>
                             <th>EMAIL</th>
                             <th>PHONE</th>
-                            <th>STATUS</th>
+                            <th>CREDENTIALS</th>
                         </tr>
                     </thead>
                     <tbody id="instructorsTableBody">
@@ -62,11 +66,6 @@
         <div class="card-body">
             <div id="calendar"></div>
         </div>
-    </div>
-
-    <!-- Book Now Button -->
-    <div class="text-center mb-4">
-        <button class="btn btn-primary btn-lg" onclick="bookNow()">Book Now</button>
     </div>
 
     <!-- My Bookings Section -->
@@ -184,6 +183,11 @@
 <!-- Add FullCalendar -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<style>
+    .selected-row {
+        background-color: #e3f2fd !important;
+    }
+</style>
 <script>
 let bookings = [];
 let aircraft = [];
@@ -224,7 +228,7 @@ function displayAircraft() {
     if (!tableBody) return;
 
     tableBody.innerHTML = aircraft.map(a => `
-        <tr>
+        <tr class="${selectedAircraft === a.id ? 'selected-row' : ''}" onclick="selectAircraft(${a.id})">
             <td>
                 <input type="radio" name="aircraft" value="${a.id}" 
                     ${selectedAircraft === a.id ? 'checked' : ''} 
@@ -233,7 +237,6 @@ function displayAircraft() {
             <td>${a.make_model}</td>
             <td>${a.tail_number}</td>
             <td>${a.type}</td>
-            <td>${a.status}</td>
         </tr>
     `).join('');
 }
@@ -243,7 +246,7 @@ function displayInstructors() {
     if (!tableBody) return;
 
     tableBody.innerHTML = instructors.map(i => `
-        <tr>
+        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''}" onclick="selectInstructor(${i.id})">
             <td>
                 <input type="radio" name="instructor" value="${i.id}" 
                     ${selectedInstructor === i.id ? 'checked' : ''} 
@@ -252,7 +255,7 @@ function displayInstructors() {
             <td>${i.name}</td>
             <td>${i.email}</td>
             <td>${i.phone}</td>
-            <td>${i.status}</td>
+            <td>${i.credentials || 'N/A'}</td>
         </tr>
     `).join('');
 }
