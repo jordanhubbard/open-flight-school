@@ -30,6 +30,7 @@ db-reset:
 
 clean-db: db-reset
 	rm -rf migrations
+	${MAKE} setup
 	. venv/bin/activate && flask db init
 	. venv/bin/activate && flask db migrate -m "Initial migration"
 	. venv/bin/activate && flask db upgrade
