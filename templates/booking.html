@@ -31,7 +31,7 @@
             <input type="time" class="form-control" id="endTimeInput" readonly>
         </div>
         <div class="col-md-2">
-            <button class="btn btn-primary w-100" onclick="checkAvailabilityAndBook()">Book Now</button>
+            <button class="btn btn-primary w-100" onclick="bookNow()">Book Now</button>
         </div>
     </div>
     
@@ -482,21 +482,34 @@ function selectInstructor(id, row) {
 }
 
 function bookNow() {
-    console.log('bookNow called');
-    console.log('Selected aircraft:', selectedAircraft);
-    console.log('Selected instructor:', selectedInstructor);
-    
     if (!selectedAircraft || !selectedInstructor) {
         showError('Please select both an aircraft and an instructor');
         return;
     }
+
+    // Get the selected date and times
+    const dateInput = document.getElementById('bookingDate');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
     
-    document.getElementById('aircraftSelect').value = selectedAircraft;
-    document.getElementById('instructorSelect').value = selectedInstructor;
+    // Create full datetime strings
+    const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
+    const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
     
+    // Set the values in the booking modal
+    const startTimeField = document.getElementById('startTime');
+    const endTimeField = document.getElementById('endTime');
+    const aircraftSelect = document.getElementById('aircraftSelect');
+    const instructorSelect = document.getElementById('instructorSelect');
+    
+    startTimeField.value = startDateTime.toISOString().slice(0, 16);
+    endTimeField.value = endDateTime.toISOString().slice(0, 16);
+    aircraftSelect.value = selectedAircraft;
+    instructorSelect.value = selectedInstructor;
+    
+    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
     modal.show();
-    console.log('Booking modal shown');
 }
 
 function initializeCalendar() {
@@ -590,15 +603,17 @@ function editBooking(id) {
 }
 
 async function saveBooking() {
-    console.log('saveBooking called');
-    const form = document.getElementById('bookingForm');
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const aircraftId = document.getElementById('aircraftSelect').value;
+    const instructorId = document.getElementById('instructorSelect').value;
+    
     const data = {
-        start_time: form.startTime.value,
-        end_time: form.endTime.value,
-        aircraft_id: form.aircraftSelect.value,
-        instructor_id: form.instructorSelect.value
+        start_time: startTime,
+        end_time: endTime,
+        aircraft_id: parseInt(aircraftId),
+        instructor_id: parseInt(instructorId)
     };
-    console.log('Booking data:', data);
     
     try {
         const response = await fetch('/api/bookings', {
@@ -609,24 +624,38 @@ async function saveBooking() {
             body: JSON.stringify(data)
         });
         
-        console.log('Response status:', response.status);
         const responseData = await response.json();
-        console.log('Response data:', responseData);
         
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-            loadData();
+            await loadData();  // Reload all data
             showSuccess('Booking created successfully');
             selectedAircraft = null;
             selectedInstructor = null;
-            displayAircraft();
-            displayInstructors();
+            await checkAvailabilityAndBook(false);  // Refresh availability
         } else {
             showError(responseData.error || 'Failed to create booking');
         }
     } catch (error) {
         console.error('Error creating booking:', error);
         showError('Failed to create booking');
+    }
+}
+
+async function loadData() {
+    try {
+        // Load bookings
+        const bookingsResponse = await fetch('/api/bookings');
+        if (!bookingsResponse.ok) throw new Error('Failed to load bookings');
+        bookings = await bookingsResponse.json();
+        
+        // Display bookings and initialize calendar
+        displayBookings();
+        initializeCalendar();
+        
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showError('Failed to load data');
     }
 }
 
