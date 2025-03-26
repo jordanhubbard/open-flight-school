@@ -155,125 +155,127 @@ function showModal(title, content, onSave) {
 // Load data when the page loads
 document.addEventListener('DOMContentLoaded', loadData);
 
-function editAircraft(id) {
-    const aircraft = aircraftData.find(a => a.id === id);
-    if (!aircraft) return;
-
-    const form = document.createElement('form');
-    form.innerHTML = `
-        <div class="form-group">
-            <label for="tail_number">Tail Number</label>
-            <input type="text" class="form-control" id="tail_number" value="${aircraft.tail_number}" required>
-        </div>
-        <div class="form-group">
-            <label for="make_model">Make/Model</label>
-            <input type="text" class="form-control" id="make_model" value="${aircraft.make_model}" required>
-        </div>
-        <div class="form-group">
-            <label for="type">Type</label>
-            <input type="text" class="form-control" id="type" value="${aircraft.type}" required>
-        </div>
-    `;
-
-    showModal('Edit Aircraft', form, async () => {
-        const data = {
-            tail_number: form.querySelector('#tail_number').value,
-            make_model: form.querySelector('#make_model').value,
-            type: form.querySelector('#type').value
-        };
-
-        try {
-            const response = await fetch(`/api/admin/aircraft/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) throw new Error('Failed to update aircraft');
-            
-            const updatedAircraft = await response.json();
-            const index = aircraftData.findIndex(a => a.id === id);
-            if (index !== -1) {
-                aircraftData[index] = updatedAircraft;
-                displayAircraft();
-            }
-        } catch (error) {
-            console.error('Error updating aircraft:', error);
-            showError('Failed to update aircraft');
+// Aircraft Management
+async function saveAircraft() {
+    const data = {
+        make_model: document.getElementById('makeModel').value,
+        tail_number: document.getElementById('tailNumber').value,
+        type: document.getElementById('type').value
+    };
+    
+    const aircraftId = document.getElementById('aircraftId').value;
+    const method = aircraftId ? 'PUT' : 'POST';
+    const url = aircraftId ? `/api/admin/aircraft/${aircraftId}` : '/api/admin/aircraft';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('aircraftModal')).hide();
+            loadAircraft();
+            showSuccess('Aircraft saved successfully');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save aircraft');
         }
-    });
+    } catch (error) {
+        console.error('Error saving aircraft:', error);
+        showError('Failed to save aircraft');
+    }
+}
+
+// Instructor Management
+async function saveInstructor() {
+    const data = {
+        name: document.getElementById('instructorName').value,
+        email: document.getElementById('instructorEmail').value,
+        phone: document.getElementById('instructorPhone').value,
+        ratings: document.getElementById('instructorRatings').value.split(',').map(r => r.trim()).filter(r => r)
+    };
+    
+    const instructorId = document.getElementById('instructorId').value;
+    const method = instructorId ? 'PUT' : 'POST';
+    const url = instructorId ? `/api/admin/instructors/${instructorId}` : '/api/admin/instructors';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('instructorModal')).hide();
+            loadInstructors();
+            showSuccess('Instructor saved successfully');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save instructor');
+        }
+    } catch (error) {
+        console.error('Error saving instructor:', error);
+        showError('Failed to save instructor');
+    }
+}
+
+function editAircraft(id) {
+    fetch(`/api/admin/aircraft/${id}`)
+        .then(response => response.json())
+        .then(aircraft => {
+            document.getElementById('aircraftModalTitle').textContent = 'Edit Aircraft';
+            document.getElementById('aircraftId').value = aircraft.id;
+            document.getElementById('makeModel').value = aircraft.make_model;
+            document.getElementById('tailNumber').value = aircraft.tail_number;
+            document.getElementById('type').value = aircraft.type;
+            new bootstrap.Modal(document.getElementById('aircraftModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading aircraft:', error);
+            showError('Failed to load aircraft data');
+        });
 }
 
 function editInstructor(id) {
-    const instructor = instructorData.find(i => i.id === id);
-    if (!instructor) return;
-
-    const form = document.createElement('form');
-    form.innerHTML = `
-        <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" class="form-control" id="name" value="${instructor.name}" required>
-        </div>
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" class="form-control" id="email" value="${instructor.email}" required>
-        </div>
-        <div class="form-group">
-            <label for="phone">Phone</label>
-            <input type="tel" class="form-control" id="phone" value="${instructor.phone || ''}" required>
-        </div>
-        <div class="form-group">
-            <label for="ratings">Ratings (comma-separated)</label>
-            <input type="text" class="form-control" id="ratings" value="${instructor.ratings.join(',')}" required>
-        </div>
-    `;
-
-    showModal('Edit Instructor', form, async () => {
-        const data = {
-            name: form.querySelector('#name').value,
-            email: form.querySelector('#email').value,
-            phone: form.querySelector('#phone').value,
-            ratings: form.querySelector('#ratings').value.split(',').map(r => r.trim()).filter(r => r)
-        };
-
-        try {
-            const response = await fetch(`/api/admin/instructors/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) throw new Error('Failed to update instructor');
-            
-            const updatedInstructor = await response.json();
-            const index = instructorData.findIndex(i => i.id === id);
-            if (index !== -1) {
-                instructorData[index] = updatedInstructor;
-                displayInstructors();
-            }
-        } catch (error) {
-            console.error('Error updating instructor:', error);
-            showError('Failed to update instructor');
-        }
-    });
+    fetch(`/api/admin/instructors/${id}`)
+        .then(response => response.json())
+        .then(instructor => {
+            document.getElementById('instructorModalTitle').textContent = 'Edit Instructor';
+            document.getElementById('instructorId').value = instructor.id;
+            document.getElementById('instructorName').value = instructor.name;
+            document.getElementById('instructorEmail').value = instructor.email;
+            document.getElementById('instructorPhone').value = instructor.phone;
+            document.getElementById('instructorRatings').value = instructor.ratings.join(', ');
+            new bootstrap.Modal(document.getElementById('instructorModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading instructor:', error);
+            showError('Failed to load instructor data');
+        });
 }
 
 async function deleteAircraft(id) {
     if (!confirm('Are you sure you want to delete this aircraft?')) return;
-
+    
     try {
         const response = await fetch(`/api/admin/aircraft/${id}`, {
             method: 'DELETE'
         });
-
-        if (!response.ok) throw new Error('Failed to delete aircraft');
         
-        aircraftData = aircraftData.filter(a => a.id !== id);
-        displayAircraft();
+        if (response.ok) {
+            loadAircraft();
+            showSuccess('Aircraft deleted successfully');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to delete aircraft');
+        }
     } catch (error) {
         console.error('Error deleting aircraft:', error);
         showError('Failed to delete aircraft');
@@ -282,16 +284,19 @@ async function deleteAircraft(id) {
 
 async function deleteInstructor(id) {
     if (!confirm('Are you sure you want to delete this instructor?')) return;
-
+    
     try {
         const response = await fetch(`/api/admin/instructors/${id}`, {
             method: 'DELETE'
         });
-
-        if (!response.ok) throw new Error('Failed to delete instructor');
         
-        instructorData = instructorData.filter(i => i.id !== id);
-        displayInstructors();
+        if (response.ok) {
+            loadInstructors();
+            showSuccess('Instructor deleted successfully');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to delete instructor');
+        }
     } catch (error) {
         console.error('Error deleting instructor:', error);
         showError('Failed to delete instructor');
@@ -382,4 +387,23 @@ function showAddInstructorModal() {
             showError('Failed to add instructor');
         }
     });
-} 
+}
+
+// Helper functions
+function showSuccess(message) {
+    // Implement success message display
+    alert(message);
+}
+
+function showError(message) {
+    // Implement error message display
+    alert(message);
+}
+
+// Initialize when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadAircraft();
+    loadInstructors();
+    loadUsers();
+    loadBookings();
+}); 
