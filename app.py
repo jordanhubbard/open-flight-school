@@ -379,7 +379,7 @@ def get_all_users():
 @app.route('/api/admin/users/<int:id>', methods=['PUT'])
 @login_required
 @admin_required
-def update_user(id):
+def update_user_admin(id):
     user = User.query.get_or_404(id)
     data = request.get_json()
     

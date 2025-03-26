@@ -1,4 +1,4 @@
-.PHONY: setup init run test clean db-reset
+.PHONY: setup init run test clean db-reset clean-db
 
 setup:
 	python3.11 -m venv venv
@@ -27,3 +27,10 @@ db-reset:
 	psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS flight_school;"
 	psql -U postgres -h localhost -c "CREATE DATABASE flight_school;"
 	psql -U postgres -h localhost -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" 
+
+clean-db: db-reset
+	rm -rf migrations
+	. venv/bin/activate && flask db init
+	. venv/bin/activate && flask db migrate -m "Initial migration"
+	. venv/bin/activate && flask db upgrade
+	. venv/bin/activate && python load_test_data.py 
