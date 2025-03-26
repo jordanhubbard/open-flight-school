@@ -1,0 +1,116 @@
+{
+    "aircraft": [
+        {
+            "make_model": "Cessna 172 Skyhawk",
+            "tail_number": "N12345",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Piper PA-28 Cherokee",
+            "tail_number": "N23456",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Diamond DA40",
+            "tail_number": "N34567",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Cessna 152",
+            "tail_number": "N45678",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Piper PA-44 Seminole",
+            "tail_number": "N56789",
+            "type": "Multi Engine Piston"
+        },
+        {
+            "make_model": "Cirrus SR20",
+            "tail_number": "N67890",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Cessna 182 Skylane",
+            "tail_number": "N78901",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Piper PA-28 Warrior",
+            "tail_number": "N89012",
+            "type": "Single Engine Piston"
+        },
+        {
+            "make_model": "Diamond DA42",
+            "tail_number": "N90123",
+            "type": "Multi Engine Piston"
+        },
+        {
+            "make_model": "Cessna 172RG Cutlass",
+            "tail_number": "N01234",
+            "type": "Single Engine Piston"
+        }
+    ],
+    "instructors": [
+        {
+            "name": "John Smith",
+            "email": "john.smith@flight-school.com",
+            "phone": "(555) 123-4567",
+            "ratings": ["CFI", "CFII", "MEI"]
+        },
+        {
+            "name": "Sarah Johnson",
+            "email": "sarah.johnson@flight-school.com",
+            "phone": "(555) 234-5678",
+            "ratings": ["CFI", "CFII"]
+        },
+        {
+            "name": "Michael Brown",
+            "email": "michael.brown@flight-school.com",
+            "phone": "(555) 345-6789",
+            "ratings": ["CFI", "CFII", "MEI", "ATP"]
+        },
+        {
+            "name": "Emily Davis",
+            "email": "emily.davis@flight-school.com",
+            "phone": "(555) 456-7890",
+            "ratings": ["CFI", "CFII", "MEI"]
+        },
+        {
+            "name": "David Wilson",
+            "email": "david.wilson@flight-school.com",
+            "phone": "(555) 567-8901",
+            "ratings": ["CFI", "CFII", "MEI", "ATP"]
+        },
+        {
+            "name": "Lisa Anderson",
+            "email": "lisa.anderson@flight-school.com",
+            "phone": "(555) 678-9012",
+            "ratings": ["CFI", "CFII"]
+        },
+        {
+            "name": "Robert Taylor",
+            "email": "robert.taylor@flight-school.com",
+            "phone": "(555) 789-0123",
+            "ratings": ["CFI", "CFII", "MEI"]
+        },
+        {
+            "name": "Jennifer White",
+            "email": "jennifer.white@flight-school.com",
+            "phone": "(555) 890-1234",
+            "ratings": ["CFI", "CFII", "MEI", "ATP"]
+        },
+        {
+            "name": "William Martinez",
+            "email": "william.martinez@flight-school.com",
+            "phone": "(555) 901-2345",
+            "ratings": ["CFI", "CFII"]
+        },
+        {
+            "name": "Amanda Lee",
+            "email": "amanda.lee@flight-school.com",
+            "phone": "(555) 012-3456",
+            "ratings": ["CFI", "CFII", "MEI"]
+        }
+    ]
+} 

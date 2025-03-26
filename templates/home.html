@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-md-6">
+        <h1 class="display-4 mb-4">Welcome to Eyes Outside</h1>
+        <p class="lead">Your journey to becoming a pilot starts here. We offer comprehensive flight training with experienced instructors and well-maintained aircraft.</p>
+        <div class="mt-4">
+            {% if not current_user.is_authenticated %}
+                <button class="btn btn-primary me-2" id="register-btn">Register Now</button>
+                <button class="btn btn-outline-primary" id="login-btn">Login</button>
+            {% else %}
+                <a href="#" class="btn btn-primary" id="book-flight-btn">Book a Flight</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="text-center">
+            <img src="{{ url_for('static', filename='images/eyes-outside.svg') }}" alt="Eyes Outside Logo" class="img-fluid mb-4" style="max-width: 400px;">
+            <p class="text-muted">"Keep your eyes outside the cockpit, and your mind on the sky."</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Modern Fleet</h5>
+                <p class="card-text">Our aircraft are regularly maintained and equipped with the latest avionics.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Expert Instructors</h5>
+                <p class="card-text">Learn from experienced CFIs who are passionate about teaching.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Flexible Scheduling</h5>
+                <p class="card-text">Book your training sessions online with our easy-to-use scheduling system.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const registerBtn = document.getElementById('register-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const bookFlightBtn = document.getElementById('book-flight-btn');
+
+    if (registerBtn) {
+        registerBtn.addEventListener('click', function() {
+            // Show registration modal
+            showRegisterModal();
+        });
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function() {
+            // Show login modal
+            showLoginModal();
+        });
+    }
+
+    if (bookFlightBtn) {
+        bookFlightBtn.addEventListener('click', function() {
+            // Navigate to booking page
+            window.location.href = '/bookings';
+        });
+    }
+});
+</script>
+{% endblock %} 
