@@ -15,15 +15,30 @@ def load_test_data():
         admin.set_password('admin123')
         db.session.add(admin)
 
-        # Create regular user
-        user = User(
-            first_name='John',
-            last_name='Doe',
-            email='john@example.com',
-            is_admin=False
-        )
-        user.set_password('password123')
-        db.session.add(user)
+        # Create regular users
+        users = [
+            User(
+                first_name='John',
+                last_name='Doe',
+                email='john@example.com',
+                is_admin=False
+            ),
+            User(
+                first_name='Jane',
+                last_name='Smith',
+                email='jane@example.com',
+                is_admin=False
+            ),
+            User(
+                first_name='Bob',
+                last_name='Johnson',
+                email='bob@example.com',
+                is_admin=False
+            )
+        ]
+        for user in users:
+            user.set_password('password123')
+            db.session.add(user)
 
         # Load test data from JSON file
         with open('test-data.json', 'r') as f:
@@ -48,26 +63,17 @@ def load_test_data():
             )
             db.session.add(instructor)
 
-        # Create some bookings
-        now = datetime.utcnow()
-        booking1 = Booking(
-            start_time=now + timedelta(days=1, hours=9),
-            end_time=now + timedelta(days=1, hours=11),
-            user_id=2,  # John Doe
-            aircraft_id=1,  # First aircraft
-            instructor_id=1,  # First instructor
-            status='confirmed'
-        )
-        booking2 = Booking(
-            start_time=now + timedelta(days=2, hours=13),
-            end_time=now + timedelta(days=2, hours=15),
-            user_id=2,  # John Doe
-            aircraft_id=2,  # Second aircraft
-            instructor_id=2,  # Second instructor
-            status='pending'
-        )
-        db.session.add(booking1)
-        db.session.add(booking2)
+        # Create bookings
+        for booking_data in test_data['bookings']:
+            booking = Booking(
+                user_id=booking_data['user_id'],
+                aircraft_id=booking_data['aircraft_id'],
+                instructor_id=booking_data['instructor_id'],
+                start_time=datetime.fromisoformat(booking_data['start_time']),
+                end_time=datetime.fromisoformat(booking_data['end_time']),
+                status=booking_data['status']
+            )
+            db.session.add(booking)
 
         try:
             db.session.commit()
