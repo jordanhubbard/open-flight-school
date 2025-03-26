@@ -9,51 +9,70 @@
         <button class="btn btn-primary btn-lg" onclick="bookNow()">Book Now</button>
     </div>
     
-    <!-- Available Aircraft Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Available Aircraft</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>SELECT</th>
-                            <th>MAKE/MODEL</th>
-                            <th>TAIL NUMBER</th>
-                            <th>TYPE</th>
-                        </tr>
-                    </thead>
-                    <tbody id="aircraftTableBody">
-                        <!-- Aircraft will be loaded here -->
-                    </tbody>
-                </table>
+    <!-- Aircraft and Instructors Section - Side by Side -->
+    <div class="row mb-4">
+        <!-- Available Aircraft Section -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Available Aircraft</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive position-relative" style="max-height: 400px;">
+                        <div class="scroll-arrow scroll-up" style="display: none;">
+                            <i class="bi bi-chevron-up"></i>
+                        </div>
+                        <table class="table table-striped mb-0">
+                            <thead class="sticky-top bg-white">
+                                <tr>
+                                    <th>SELECT</th>
+                                    <th>MAKE/MODEL</th>
+                                    <th>TAIL NUMBER</th>
+                                    <th>TYPE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aircraftTableBody">
+                                <!-- Aircraft will be loaded here -->
+                            </tbody>
+                        </table>
+                        <div class="scroll-arrow scroll-down" style="display: none;">
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Available Instructors Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Available Instructors</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>SELECT</th>
-                            <th>NAME</th>
-                            <th>EMAIL</th>
-                            <th>PHONE</th>
-                            <th>CREDENTIALS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="instructorsTableBody">
-                        <!-- Instructors will be loaded here -->
-                    </tbody>
-                </table>
+        <!-- Available Instructors Section -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Available Instructors</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive position-relative" style="max-height: 400px;">
+                        <div class="scroll-arrow scroll-up" style="display: none;">
+                            <i class="bi bi-chevron-up"></i>
+                        </div>
+                        <table class="table table-striped mb-0">
+                            <thead class="sticky-top bg-white">
+                                <tr>
+                                    <th>SELECT</th>
+                                    <th>NAME</th>
+                                    <th>EMAIL</th>
+                                    <th>PHONE</th>
+                                    <th>CREDENTIALS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instructorsTableBody">
+                                <!-- Instructors will be loaded here -->
+                            </tbody>
+                        </table>
+                        <div class="scroll-arrow scroll-down" style="display: none;">
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -187,6 +206,47 @@
     .selected-row {
         background-color: #e3f2fd !important;
     }
+    .table-responsive {
+        overflow-y: auto;
+    }
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .scroll-arrow {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 30px;
+        height: 30px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 2;
+        transition: all 0.2s ease;
+    }
+    .scroll-arrow:hover {
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .scroll-up {
+        top: 10px;
+    }
+    .scroll-down {
+        bottom: 10px;
+    }
+    .scroll-arrow i {
+        font-size: 1.2rem;
+        color: #0d6efd;
+    }
 </style>
 <script>
 let bookings = [];
@@ -194,6 +254,52 @@ let aircraft = [];
 let instructors = [];
 let selectedAircraft = null;
 let selectedInstructor = null;
+
+function setupScrollArrows(containerId) {
+    const container = document.querySelector(containerId);
+    if (!container) return;
+
+    const scrollUp = container.querySelector('.scroll-up');
+    const scrollDown = container.querySelector('.scroll-down');
+    const tableBody = container.querySelector('tbody');
+
+    function updateScrollArrows() {
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        // Show/hide up arrow
+        if (scrollTop > 0) {
+            scrollUp.style.display = 'flex';
+        } else {
+            scrollUp.style.display = 'none';
+        }
+
+        // Show/hide down arrow
+        if (scrollTop < scrollHeight - clientHeight) {
+            scrollDown.style.display = 'flex';
+        } else {
+            scrollDown.style.display = 'none';
+        }
+    }
+
+    function scroll(direction) {
+        const scrollAmount = 100; // Adjust this value to control scroll speed
+        container.scrollBy({
+            top: direction * scrollAmount,
+            behavior: 'smooth'
+        });
+    }
+
+    // Add event listeners
+    scrollUp.addEventListener('click', () => scroll(-1));
+    scrollDown.addEventListener('click', () => scroll(1));
+    container.addEventListener('scroll', updateScrollArrows);
+    container.addEventListener('resize', updateScrollArrows);
+
+    // Initial check
+    updateScrollArrows();
+}
 
 async function loadData() {
     try {
@@ -217,6 +323,10 @@ async function loadData() {
         displayBookings();
         populateSelects();
         initializeCalendar();
+        
+        // Setup scroll arrows after data is loaded
+        setupScrollArrows('#aircraftTableBody').closest('.table-responsive');
+        setupScrollArrows('#instructorsTableBody').closest('.table-responsive');
     } catch (error) {
         console.error('Error loading data:', error);
         showError('Failed to load data');
