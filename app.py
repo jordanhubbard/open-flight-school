@@ -74,14 +74,16 @@ def admin_required(f):
 @app.route('/')
 def home():
     if current_user.is_authenticated:
-        return redirect(url_for('booking_page'))
+        # Redirect admin users to admin dashboard, regular users to booking page
+        return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('booking_page'))
     logger.debug("Rendering index page")
     return render_template('home.html')
 
 @app.route('/login', methods=['GET'])
 def login_page():
     if current_user.is_authenticated:
-        return redirect(url_for('booking_page'))
+        # Redirect admin users to admin dashboard, regular users to booking page
+        return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('booking_page'))
     return render_template('login.html')
 
 @app.route('/logout')
@@ -127,9 +129,11 @@ def login():
     if user and user.check_password(data['password']):
         login_user(user)
         logger.debug(f"User {data['email']} logged in successfully")
+        # Redirect admin users to admin dashboard, regular users to booking page
+        redirect_url = url_for('admin_dashboard') if user.is_admin else url_for('booking_page')
         return jsonify({
             'message': 'Login successful',
-            'redirect': url_for('booking_page')
+            'redirect': redirect_url
         })
     
     logger.debug(f"Login failed for email: {data['email']}")
