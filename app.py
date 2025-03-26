@@ -29,6 +29,12 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-please-change-in-pro
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///flight_school.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to cookies
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF
+
 # Email configuration
 if app.config.get('TESTING'):
     app.config['MAIL_SUPPRESS_SEND'] = True
@@ -61,6 +67,24 @@ def load_user(user_id):
     logger.debug(f"Loading user with ID: {user_id}")
     return User.query.get(int(user_id))
 
+def check_session_timeout():
+    if current_user.is_authenticated:
+        last_active = session.get('last_active')
+        if last_active:
+            last_active = datetime.fromisoformat(last_active)
+            if datetime.utcnow() - last_active > app.config['PERMANENT_SESSION_LIFETIME']:
+                logout_user()
+                session.clear()
+                return True
+    return False
+
+@app.before_request
+def before_request():
+    if check_session_timeout():
+        return redirect(url_for('login_page', message='Your session has expired. Please log in again.'))
+    if current_user.is_authenticated:
+        session['last_active'] = datetime.utcnow().isoformat()
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -90,6 +114,7 @@ def login_page():
 @login_required
 def logout():
     logout_user()
+    session.clear()
     return redirect(url_for('login_page'))
 
 @app.route('/api/register', methods=['POST'])
@@ -127,6 +152,8 @@ def login():
     
     user = User.query.filter_by(email=data['email']).first()
     if user and user.check_password(data['password']):
+        # Set up secure session
+        session.permanent = True
         login_user(user)
         logger.debug(f"User {data['email']} logged in successfully")
         # Redirect admin users to admin dashboard, regular users to booking page
