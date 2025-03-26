@@ -151,24 +151,22 @@
             <div class="modal-body">
                 <form id="bookingForm">
                     <div class="mb-3">
-                        <label for="startTime" class="form-label">Start Time</label>
-                        <input type="datetime-local" class="form-control" id="startTime" required>
+                        <label class="form-label">Start Time</label>
+                        <input type="datetime-local" class="form-control" id="startTime" required readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="endTime" class="form-label">End Time</label>
-                        <input type="datetime-local" class="form-control" id="endTime" required>
+                        <label class="form-label">End Time</label>
+                        <input type="datetime-local" class="form-control" id="endTime" required readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="aircraftSelect" class="form-label">Aircraft</label>
-                        <select class="form-select" id="aircraftSelect" required>
-                            <!-- Aircraft options will be loaded here -->
-                        </select>
+                        <label class="form-label">Aircraft</label>
+                        <input type="hidden" id="aircraftSelect">
+                        <div class="form-control" id="selectedAircraftText" readonly></div>
                     </div>
                     <div class="mb-3">
-                        <label for="instructorSelect" class="form-label">Instructor</label>
-                        <select class="form-select" id="instructorSelect" required>
-                            <!-- Instructor options will be loaded here -->
-                        </select>
+                        <label class="form-label">Instructor</label>
+                        <input type="hidden" id="instructorSelect">
+                        <div class="form-control" id="selectedInstructorText" readonly></div>
                     </div>
                 </form>
             </div>
@@ -501,11 +499,22 @@ function bookNow() {
     const endTimeField = document.getElementById('endTime');
     const aircraftSelect = document.getElementById('aircraftSelect');
     const instructorSelect = document.getElementById('instructorSelect');
+    const selectedAircraftText = document.getElementById('selectedAircraftText');
+    const selectedInstructorText = document.getElementById('selectedInstructorText');
     
+    // Set datetime values
     startTimeField.value = startDateTime.toISOString().slice(0, 16);
     endTimeField.value = endDateTime.toISOString().slice(0, 16);
+    
+    // Set selected aircraft and instructor
+    const selectedAircraftObj = aircraft.find(a => a.id === selectedAircraft);
+    const selectedInstructorObj = instructors.find(i => i.id === selectedInstructor);
+    
     aircraftSelect.value = selectedAircraft;
     instructorSelect.value = selectedInstructor;
+    
+    selectedAircraftText.textContent = `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
+    selectedInstructorText.textContent = selectedInstructorObj.name;
     
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
