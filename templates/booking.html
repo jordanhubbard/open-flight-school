@@ -244,21 +244,26 @@
     .table-container {
         position: relative;
         height: 400px;
+        padding-right: 40px; /* Make room for navigation buttons */
     }
     .table-scroll {
         height: 100%;
-        overflow: hidden;
-        position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+    .table-scroll::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
     }
     .table-nav-buttons {
         position: absolute;
-        right: 0;
+        right: 8px;
         top: 50%;
         transform: translateY(-50%);
         display: flex;
         flex-direction: column;
         gap: 8px;
-        padding-right: 8px;
         z-index: 3;
     }
     .nav-button {
@@ -275,7 +280,7 @@
         transition: all 0.2s ease;
         padding: 0;
     }
-    .nav-button:hover {
+    .nav-button:hover:not(:disabled) {
         background-color: #fff;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
@@ -286,6 +291,9 @@
     .nav-button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+    .nav-button:disabled i {
+        color: #6c757d;
     }
     .sticky-top {
         position: sticky;
@@ -718,13 +726,20 @@ function setupTableNavigation(scrollContainerId, upButtonId, downButtonId) {
     const container = document.getElementById(scrollContainerId);
     const upButton = document.getElementById(upButtonId);
     const downButton = document.getElementById(downButtonId);
-    const scrollAmount = 100; // pixels to scroll per click
+    const scrollAmount = 80; // Adjust scroll amount for smoother navigation
 
     function updateButtonStates() {
         if (!container || !upButton || !downButton) return;
         
-        upButton.disabled = container.scrollTop <= 0;
-        downButton.disabled = container.scrollTop + container.clientHeight >= container.scrollHeight;
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        
+        // Show/hide up button
+        upButton.disabled = scrollTop <= 0;
+        
+        // Show/hide down button
+        downButton.disabled = Math.abs(scrollHeight - clientHeight - scrollTop) < 1;
     }
 
     if (upButton) {
@@ -733,6 +748,8 @@ function setupTableNavigation(scrollContainerId, upButtonId, downButtonId) {
                 top: -scrollAmount,
                 behavior: 'smooth'
             });
+            // Update button states after animation
+            setTimeout(updateButtonStates, 400);
         });
     }
 
@@ -742,13 +759,21 @@ function setupTableNavigation(scrollContainerId, upButtonId, downButtonId) {
                 top: scrollAmount,
                 behavior: 'smooth'
             });
+            // Update button states after animation
+            setTimeout(updateButtonStates, 400);
         });
     }
 
     if (container) {
+        // Update button states on scroll
         container.addEventListener('scroll', updateButtonStates);
+        
         // Initial button state
         updateButtonStates();
+        
+        // Update button states when content changes
+        const observer = new MutationObserver(updateButtonStates);
+        observer.observe(container, { childList: true, subtree: true });
     }
 }
 
