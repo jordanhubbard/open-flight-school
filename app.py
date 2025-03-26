@@ -267,8 +267,7 @@ def get_all_aircraft():
         'id': a.id,
         'tail_number': a.tail_number,
         'make_model': a.make_model,
-        'type': a.type,
-        'created_at': a.created_at.isoformat()
+        'type': a.type
     } for a in aircraft])
 
 @app.route('/api/admin/aircraft', methods=['POST'])
@@ -283,7 +282,12 @@ def create_aircraft():
     )
     db.session.add(aircraft)
     db.session.commit()
-    return jsonify(aircraft.to_dict()), 201
+    return jsonify({
+        'id': aircraft.id,
+        'tail_number': aircraft.tail_number,
+        'make_model': aircraft.make_model,
+        'type': aircraft.type
+    }), 201
 
 @app.route('/api/admin/aircraft/<int:id>', methods=['PUT'])
 @login_required
@@ -291,13 +295,16 @@ def create_aircraft():
 def update_aircraft(id):
     aircraft = Aircraft.query.get_or_404(id)
     data = request.get_json()
-    
-    aircraft.make_model = data.get('make_model', aircraft.make_model)
-    aircraft.tail_number = data.get('tail_number', aircraft.tail_number)
-    aircraft.type = data.get('type', aircraft.type)
-    
+    aircraft.tail_number = data['tail_number']
+    aircraft.make_model = data['make_model']
+    aircraft.type = data['type']
     db.session.commit()
-    return jsonify({'message': 'Aircraft updated successfully'})
+    return jsonify({
+        'id': aircraft.id,
+        'tail_number': aircraft.tail_number,
+        'make_model': aircraft.make_model,
+        'type': aircraft.type
+    })
 
 @app.route('/api/admin/aircraft/<int:id>', methods=['DELETE'])
 @login_required
@@ -307,6 +314,18 @@ def delete_aircraft(id):
     db.session.delete(aircraft)
     db.session.commit()
     return jsonify({'message': 'Aircraft deleted successfully'})
+
+@app.route('/api/admin/aircraft/<int:id>', methods=['GET'])
+@login_required
+@admin_required
+def get_aircraft(id):
+    aircraft = Aircraft.query.get_or_404(id)
+    return jsonify({
+        'id': aircraft.id,
+        'tail_number': aircraft.tail_number,
+        'make_model': aircraft.make_model,
+        'type': aircraft.type
+    })
 
 @app.route('/api/admin/instructors', methods=['GET'])
 @login_required
@@ -318,8 +337,7 @@ def get_all_instructors():
         'name': i.name,
         'email': i.email,
         'phone': i.phone,
-        'ratings': i.ratings,
-        'created_at': i.created_at.isoformat()
+        'ratings': i.ratings.split(',') if i.ratings else []
     } for i in instructors])
 
 @app.route('/api/admin/instructors', methods=['POST'])
@@ -330,12 +348,18 @@ def create_instructor():
     instructor = Instructor(
         name=data['name'],
         email=data['email'],
-        phone=data.get('phone'),
-        ratings=data.get('ratings', [])
+        phone=data['phone'],
+        ratings=','.join(data['ratings']) if data.get('ratings') else ''
     )
     db.session.add(instructor)
     db.session.commit()
-    return jsonify(instructor.to_dict()), 201
+    return jsonify({
+        'id': instructor.id,
+        'name': instructor.name,
+        'email': instructor.email,
+        'phone': instructor.phone,
+        'ratings': instructor.ratings.split(',') if instructor.ratings else []
+    }), 201
 
 @app.route('/api/admin/instructors/<int:id>', methods=['PUT'])
 @login_required
@@ -343,14 +367,18 @@ def create_instructor():
 def update_instructor(id):
     instructor = Instructor.query.get_or_404(id)
     data = request.get_json()
-    
-    instructor.name = data.get('name', instructor.name)
-    instructor.email = data.get('email', instructor.email)
-    instructor.phone = data.get('phone', instructor.phone)
-    instructor.ratings = data.get('ratings', instructor.ratings)
-    
+    instructor.name = data['name']
+    instructor.email = data['email']
+    instructor.phone = data['phone']
+    instructor.ratings = ','.join(data['ratings']) if data.get('ratings') else ''
     db.session.commit()
-    return jsonify({'message': 'Instructor updated successfully'})
+    return jsonify({
+        'id': instructor.id,
+        'name': instructor.name,
+        'email': instructor.email,
+        'phone': instructor.phone,
+        'ratings': instructor.ratings.split(',') if instructor.ratings else []
+    })
 
 @app.route('/api/admin/instructors/<int:id>', methods=['DELETE'])
 @login_required
