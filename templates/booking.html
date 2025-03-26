@@ -294,6 +294,10 @@ function selectInstructor(id) {
 }
 
 function bookNow() {
+    console.log('bookNow called');
+    console.log('Selected aircraft:', selectedAircraft);
+    console.log('Selected instructor:', selectedInstructor);
+    
     if (!selectedAircraft || !selectedInstructor) {
         showError('Please select both an aircraft and an instructor');
         return;
@@ -302,7 +306,9 @@ function bookNow() {
     document.getElementById('aircraftSelect').value = selectedAircraft;
     document.getElementById('instructorSelect').value = selectedInstructor;
     
-    new bootstrap.Modal(document.getElementById('bookingModal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    modal.show();
+    console.log('Booking modal shown');
 }
 
 function initializeCalendar() {
@@ -396,6 +402,7 @@ function editBooking(id) {
 }
 
 async function saveBooking() {
+    console.log('saveBooking called');
     const form = document.getElementById('bookingForm');
     const data = {
         start_time: form.startTime.value,
@@ -403,6 +410,7 @@ async function saveBooking() {
         aircraft_id: form.aircraftSelect.value,
         instructor_id: form.instructorSelect.value
     };
+    console.log('Booking data:', data);
     
     try {
         const response = await fetch('/api/bookings', {
@@ -413,6 +421,10 @@ async function saveBooking() {
             body: JSON.stringify(data)
         });
         
+        console.log('Response status:', response.status);
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
             loadData();
@@ -422,8 +434,7 @@ async function saveBooking() {
             displayAircraft();
             displayInstructors();
         } else {
-            const error = await response.json();
-            showError(error.error || 'Failed to create booking');
+            showError(responseData.error || 'Failed to create booking');
         }
     } catch (error) {
         console.error('Error creating booking:', error);
