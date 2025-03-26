@@ -284,19 +284,41 @@ let instructors = [];
 let selectedAircraft = null;
 let selectedInstructor = null;
 
-// Set default date to today
+// Set default date to today and default time to now
 document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
+    const now = new Date();
+    
+    // Set default date
     const dateInput = document.getElementById('bookingDate');
-    dateInput.value = today.toISOString().split('T')[0];
-    dateInput.min = today.toISOString().split('T')[0];
+    dateInput.value = now.toISOString().split('T')[0];
+    dateInput.min = now.toISOString().split('T')[0];
     
-    // Add event listeners for time and duration changes
-    document.getElementById('startTimeInput').addEventListener('change', updateEndTime);
-    document.getElementById('durationSelect').addEventListener('change', updateEndTime);
+    // Set default start time (current time rounded to next 15 minutes)
+    const startTimeInput = document.getElementById('startTimeInput');
+    const minutes = Math.ceil(now.getMinutes() / 15) * 15;
+    now.setMinutes(minutes, 0, 0);
+    startTimeInput.value = now.toTimeString().slice(0, 5);
     
-    // Load initial data
-    loadData();
+    // Set default duration to 1 hour
+    const durationSelect = document.getElementById('durationSelect');
+    durationSelect.value = "1";
+    
+    // Calculate and set default end time
+    updateEndTime();
+    
+    // Add event listeners for all time-related fields
+    dateInput.addEventListener('change', checkAvailabilityOnChange);
+    startTimeInput.addEventListener('change', () => {
+        updateEndTime();
+        checkAvailabilityOnChange();
+    });
+    durationSelect.addEventListener('change', () => {
+        updateEndTime();
+        checkAvailabilityOnChange();
+    });
+    
+    // Initial availability check
+    checkAvailabilityAndBook();
 });
 
 function updateEndTime() {
@@ -317,13 +339,24 @@ function updateEndTime() {
     }
 }
 
-async function checkAvailabilityAndBook() {
+async function checkAvailabilityOnChange() {
+    // Reset selections when time changes
+    selectedAircraft = null;
+    selectedInstructor = null;
+    
+    // Check availability with the new time
+    await checkAvailabilityAndBook(false); // Pass false to prevent showing "no availability" error
+}
+
+async function checkAvailabilityAndBook(showErrors = true) {
     const dateInput = document.getElementById('bookingDate');
     const startTimeInput = document.getElementById('startTimeInput');
     const endTimeInput = document.getElementById('endTimeInput');
     
     if (!dateInput.value || !startTimeInput.value || !endTimeInput.value) {
-        showError('Please select a date, start time, and duration');
+        if (showErrors) {
+            showError('Please select a date, start time, and duration');
+        }
         return;
     }
     
@@ -352,22 +385,20 @@ async function checkAvailabilityAndBook() {
         aircraft = availabilityData.aircraft;
         instructors = availabilityData.instructors;
         
-        // Reset selections
-        selectedAircraft = null;
-        selectedInstructor = null;
-        
         // Update displays
         displayAircraft();
         displayInstructors();
         
-        if (!aircraft.some(a => a.available) || !instructors.some(i => i.available)) {
+        if (showErrors && (!aircraft.some(a => a.available) || !instructors.some(i => i.available))) {
             showError('No available aircraft or instructors for the selected time slot');
             return;
         }
         
     } catch (error) {
         console.error('Error checking availability:', error);
-        showError('Failed to check availability');
+        if (showErrors) {
+            showError('Failed to check availability');
+        }
     }
 }
 
