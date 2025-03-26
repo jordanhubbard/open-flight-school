@@ -13,10 +13,9 @@ run:
 
 test:
 	. venv/bin/activate && python -m pytest
-	. venv/bin/activate && python load_test_data.py
 
 test-data: setup
-	python3.11 -m venv venv
+	. venv/bin/activate && python load_test_data.py
 
 clean:
 	rm -rf venv
