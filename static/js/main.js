@@ -193,178 +193,53 @@ async function loginUser(credentials) {
 
 async function getBookings() {
     try {
-        const response = await fetch('/api/bookings');
-        if (response.ok) {
-            const bookings = await response.json();
+        // Get bookings for the list view
+        const bookingsResponse = await fetch('/api/bookings');
+        if (bookingsResponse.ok) {
+            const bookings = await bookingsResponse.json();
             displayBookings(bookings);
         } else {
-            showError('Failed to fetch bookings');
+            showError('Failed to load bookings');
         }
-    } catch (error) {
-        showError('An error occurred while fetching bookings');
-    }
-}
 
-async function createBooking(bookingData) {
-    try {
-        const response = await fetch('/api/bookings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData)
-        });
-        
-        const data = await response.json();
-        if (response.ok) {
-            showSuccess('Booking created successfully!');
-            getBookings();
+        // Get bookings for the calendar view
+        const calendarResponse = await fetch('/api/bookings/calendar');
+        if (calendarResponse.ok) {
+            const calendarBookings = await calendarResponse.json();
+            updateCalendarEvents(calendarBookings);
         } else {
-            showError(data.error || 'Failed to create booking');
+            showError('Failed to load calendar bookings');
         }
     } catch (error) {
-        showError('An error occurred while creating the booking');
+        console.error('Error loading bookings:', error);
+        showError('An error occurred while loading bookings');
     }
 }
 
-// Modal handling
-function showRegisterModal() {
-    const modal = new bootstrap.Modal(document.getElementById('registerModal'));
-    modal.show();
-}
-
-function hideRegisterModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
-    if (modal) modal.hide();
-}
-
-function showLoginModal() {
-    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
-    modal.show();
-}
-
-function hideLoginModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-    if (modal) modal.hide();
-}
-
-function showResetPasswordModal() {
-    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-    modal.show();
-}
-
-function hideResetPasswordModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
-    if (modal) modal.hide();
-}
-
-function showNewPasswordModal() {
-    const modal = new bootstrap.Modal(document.getElementById('newPasswordModal'));
-    modal.show();
-}
-
-function hideNewPasswordModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('newPasswordModal'));
-    if (modal) modal.hide();
-}
-
-// Password reset functionality
-async function requestPasswordReset(email) {
-    try {
-        const response = await fetch('/api/request-password-reset', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email })
-        });
-        
-        const data = await response.json();
-        if (response.ok) {
-            hideResetPasswordModal();
-            showSuccess('If an account exists with this email, you will receive password reset instructions.');
-        } else {
-            showError(data.error || 'Failed to send reset email');
-        }
-    } catch (error) {
-        console.error('Password reset request error:', error);
-        showError('An error occurred while requesting password reset');
-    }
-}
-
-async function resetPassword(token, password) {
-    try {
-        const response = await fetch(`/api/reset-password/${token}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ password })
-        });
-        
-        const data = await response.json();
-        if (response.ok) {
-            hideNewPasswordModal();
-            showSuccess('Password has been reset successfully. Please login with your new password.');
-            setTimeout(() => {
-                showLoginModal();
-            }, 1500);
-        } else {
-            showError(data.error || 'Failed to reset password');
-        }
-    } catch (error) {
-        console.error('Password reset error:', error);
-        showError('An error occurred while resetting password');
-    }
-}
-
-// Form Validation
-function validatePassword(password) {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+function updateCalendarEvents(bookings) {
+    if (!calendar) return;
     
-    return {
-        isValid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar,
-        message: 'Password must be at least 8 characters long and contain uppercase, lowercase, numbers, and special characters.'
-    };
+    // Remove existing events
+    calendar.getEvents().forEach(event => event.remove());
+    
+    // Add new events
+    bookings.forEach(booking => {
+        calendar.addEvent({
+            id: booking.id,
+            title: `${booking.aircraft || 'No Aircraft'} - ${booking.instructor || 'No Instructor'}`,
+            start: booking.start,
+            end: booking.end,
+            classNames: booking.is_own_booking ? ['own-booking'] : ['other-booking'],
+            backgroundColor: booking.is_own_booking ? '#e8f5e9' : '#fff3e0',
+            borderColor: booking.is_own_booking ? '#4caf50' : '#ff9800',
+            textColor: booking.is_own_booking ? '#1b5e20' : '#e65100'
+        });
+    });
 }
 
-// API Calls
-async function apiCall(url, method = 'GET', data = null) {
-    const overlay = showLoading();
-    try {
-        const options = {
-            method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin'
-        };
-        
-        if (data) {
-            options.body = JSON.stringify(data);
-        }
-        
-        const response = await fetch(url, options);
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'An error occurred');
-        }
-        
-        return result;
-    } catch (error) {
-        showError(error.message);
-        throw error;
-    } finally {
-        hideLoading(overlay);
-    }
-}
+let calendar = null;
 
-// Event listeners
+// Initialize calendar when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Login button handler
     const loginLink = document.getElementById('login-link');
@@ -568,6 +443,54 @@ document.addEventListener('DOMContentLoaded', function() {
             
             await createBooking(bookingData);
         });
+    }
+
+    // Initialize calendar if we're on the booking page
+    const calendarEl = document.getElementById('calendar');
+    if (calendarEl) {
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: ''  // View selector is handled by our custom dropdown
+            },
+            slotMinTime: '06:00:00',
+            slotMaxTime: '22:00:00',
+            allDaySlot: false,
+            height: 'auto',
+            expandRows: true,
+            slotEventOverlap: false,
+            nowIndicator: true,
+            dayMaxEvents: true,
+            eventTimeFormat: {
+                hour: 'numeric',
+                minute: '2-digit',
+                meridiem: 'short'
+            },
+            slotLabelFormat: {
+                hour: 'numeric',
+                minute: '2-digit',
+                meridiem: 'short'
+            },
+            eventClick: function(info) {
+                // Handle event click - could show details or edit modal
+                console.log('Event clicked:', info.event);
+            }
+        });
+        
+        calendar.render();
+        
+        // Handle view change from dropdown
+        const viewSelect = document.getElementById('calendarViewSelect');
+        if (viewSelect) {
+            viewSelect.addEventListener('change', function() {
+                calendar.changeView(this.value);
+            });
+        }
+        
+        // Load initial bookings
+        getBookings();
     }
 });
 
@@ -809,4 +732,163 @@ function displayBookings(bookings) {
     });
     
     container.appendChild(table);
+}
+
+async function createBooking(bookingData) {
+    try {
+        const response = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bookingData)
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            showSuccess('Booking created successfully!');
+            getBookings();
+        } else {
+            showError(data.error || 'Failed to create booking');
+        }
+    } catch (error) {
+        showError('An error occurred while creating the booking');
+    }
+}
+
+// Modal handling
+function showRegisterModal() {
+    const modal = new bootstrap.Modal(document.getElementById('registerModal'));
+    modal.show();
+}
+
+function hideRegisterModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+    if (modal) modal.hide();
+}
+
+function showLoginModal() {
+    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+    modal.show();
+}
+
+function hideLoginModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+    if (modal) modal.hide();
+}
+
+function showResetPasswordModal() {
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+function hideResetPasswordModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+    if (modal) modal.hide();
+}
+
+function showNewPasswordModal() {
+    const modal = new bootstrap.Modal(document.getElementById('newPasswordModal'));
+    modal.show();
+}
+
+function hideNewPasswordModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('newPasswordModal'));
+    if (modal) modal.hide();
+}
+
+// Password reset functionality
+async function requestPasswordReset(email) {
+    try {
+        const response = await fetch('/api/request-password-reset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            hideResetPasswordModal();
+            showSuccess('If an account exists with this email, you will receive password reset instructions.');
+        } else {
+            showError(data.error || 'Failed to send reset email');
+        }
+    } catch (error) {
+        console.error('Password reset request error:', error);
+        showError('An error occurred while requesting password reset');
+    }
+}
+
+async function resetPassword(token, password) {
+    try {
+        const response = await fetch(`/api/reset-password/${token}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ password })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            hideNewPasswordModal();
+            showSuccess('Password has been reset successfully. Please login with your new password.');
+            setTimeout(() => {
+                showLoginModal();
+            }, 1500);
+        } else {
+            showError(data.error || 'Failed to reset password');
+        }
+    } catch (error) {
+        console.error('Password reset error:', error);
+        showError('An error occurred while resetting password');
+    }
+}
+
+// Form Validation
+function validatePassword(password) {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return {
+        isValid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar,
+        message: 'Password must be at least 8 characters long and contain uppercase, lowercase, numbers, and special characters.'
+    };
+}
+
+// API Calls
+async function apiCall(url, method = 'GET', data = null) {
+    const overlay = showLoading();
+    try {
+        const options = {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        };
+        
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        
+        const response = await fetch(url, options);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'An error occurred');
+        }
+        
+        return result;
+    } catch (error) {
+        showError(error.message);
+        throw error;
+    } finally {
+        hideLoading(overlay);
+    }
 } 

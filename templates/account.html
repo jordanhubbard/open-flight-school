@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Account Settings</h3>
+                </div>
+                <div class="card-body">
+                    <form id="accountForm">
+                        <div class="mb-3">
+                            <label for="firstName" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="firstName" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="lastName" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" name="last_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">New Password (leave blank to keep current)</label>
+                            <input type="password" class="form-control" id="password" name="password">
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load user data
+    fetch('/api/user')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('firstName').value = data.first_name;
+            document.getElementById('lastName').value = data.last_name;
+            document.getElementById('email').value = data.email;
+            document.getElementById('phone').value = data.phone || '';
+            document.getElementById('address').value = data.address || '';
+        })
+        .catch(error => {
+            console.error('Error loading user data:', error);
+            showError('Failed to load user data');
+        });
+
+    // Handle form submission
+    document.getElementById('accountForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            first_name: document.getElementById('firstName').value,
+            last_name: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            address: document.getElementById('address').value
+        };
+
+        // Only include password if it's not empty
+        const password = document.getElementById('password').value;
+        if (password) {
+            formData.password = password;
+        }
+
+        fetch('/api/user', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showError(data.error);
+            } else {
+                showSuccess('Account updated successfully');
+                // Clear password field
+                document.getElementById('password').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error updating account:', error);
+            showError('Failed to update account');
+        });
+    });
+});
+
+function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alertDiv, document.getElementById('accountForm'));
+}
+
+function showSuccess(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alertDiv, document.getElementById('accountForm'));
+}
+</script>
+{% endblock %} 

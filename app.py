@@ -478,7 +478,8 @@ def get_calendar_bookings():
         'end': b.end_time.isoformat(),
         'aircraft': b.aircraft.make_model if b.aircraft else None,
         'instructor': b.instructor.name if b.instructor else None,
-        'is_own_booking': b.user_id == current_user.id
+        'is_own_booking': b.user_id == current_user.id,
+        'status': b.status
     } for b in bookings])
 
 @app.route('/api/check-availability', methods=['POST'])
@@ -534,6 +535,52 @@ def check_availability():
         'aircraft': available_aircraft,
         'instructors': available_instructors
     })
+
+@app.route('/account')
+@login_required
+def account():
+    return render_template('account.html')
+
+@app.route('/api/user', methods=['GET'])
+@login_required
+def get_user():
+    return jsonify({
+        'id': current_user.id,
+        'first_name': current_user.first_name,
+        'last_name': current_user.last_name,
+        'email': current_user.email,
+        'phone': current_user.phone,
+        'address': current_user.address,
+        'is_admin': current_user.is_admin
+    })
+
+@app.route('/api/user', methods=['PUT'])
+@login_required
+def update_user():
+    data = request.get_json()
+    
+    # Check if email is being changed and if it's already taken
+    if data.get('email') and data['email'] != current_user.email:
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email already registered'}), 400
+    
+    # Update user fields
+    current_user.first_name = data.get('first_name', current_user.first_name)
+    current_user.last_name = data.get('last_name', current_user.last_name)
+    current_user.email = data.get('email', current_user.email)
+    current_user.phone = data.get('phone', current_user.phone)
+    current_user.address = data.get('address', current_user.address)
+    
+    # Update password if provided
+    if data.get('password'):
+        current_user.set_password(data['password'])
+    
+    try:
+        db.session.commit()
+        return jsonify({'message': 'User updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 

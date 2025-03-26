@@ -1,52 +1,29 @@
-.PHONY: setup run test clean init-db init db-reset test-data
+.PHONY: setup init run test clean db-reset
 
-VENV = venv
-PYTHON = $(VENV)/bin/python
-PIP = $(VENV)/bin/pip
-FLASK = $(VENV)/bin/flask
-PSQL = psql -U postgres -h localhost
+setup:
+	python3.11 -m venv venv
+	. venv/bin/activate && pip install --upgrade pip
+	. venv/bin/activate && pip install -r requirements.txt
 
-setup: $(VENV)
-	$(PIP) install -r requirements.txt
-	$(FLASK) db init
-	$(FLASK) db migrate -m "Initial migration"
-	$(FLASK) db upgrade
-	$(PYTHON) init_db.py
+init: db-reset
+	. venv/bin/activate && flask db upgrade
+	. venv/bin/activate && python load_test_data.py
 
-$(VENV):
-	python3 -m venv $(VENV)
+run:
+	. venv/bin/activate && flask run
 
-run: $(VENV)
-	$(FLASK) run
-
-test: $(VENV)
-	$(PYTHON) -m pytest tests/
+test:
+	. venv/bin/activate && python -m pytest
 
 clean:
-	rm -rf $(VENV)
+	rm -rf venv
 	rm -rf __pycache__
 	rm -rf .pytest_cache
 	rm -rf instance
 	rm -rf migrations
 
-init-db: $(VENV)
-	$(PYTHON) init_db.py
-
 db-reset:
-	@psql -U postgres -h localhost -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'flight_school' AND pid <> pg_backend_pid();"
-	@psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS flight_school;"
-	@psql -U postgres -h localhost -c "CREATE DATABASE flight_school;"
-	@psql -U postgres -h localhost -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-	@psql -U postgres -h localhost -d flight_school -c "DROP TABLE IF EXISTS users, aircraft, instructor, booking CASCADE;"
-
-init: clean db-reset $(VENV)
-	$(PIP) install -r requirements.txt
-	$(FLASK) db init
-	$(FLASK) db migrate -m "Initial migration"
-	$(FLASK) db upgrade
-	$(PYTHON) init_db.py
-	@echo "Database initialized with correct schema. Tables created: users, aircraft, instructor, booking"
-
-test-data: $(VENV)
-	@echo "Loading test data..."
-	$(PYTHON) scripts/load_test_data.py 
+	psql -U postgres -h localhost -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'flight_school' AND pid <> pg_backend_pid();"
+	psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS flight_school;"
+	psql -U postgres -h localhost -c "CREATE DATABASE flight_school;"
+	psql -U postgres -h localhost -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" 
