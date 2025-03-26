@@ -332,4 +332,54 @@ async function deleteBooking(id) {
         console.error('Error deleting booking:', error);
         showError('Failed to delete booking');
     }
+}
+
+function showAddInstructorModal() {
+    const form = document.createElement('form');
+    form.innerHTML = `
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" id="name" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" class="form-control" id="email" required>
+        </div>
+        <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" class="form-control" id="phone" required>
+        </div>
+        <div class="form-group">
+            <label for="ratings">Ratings (comma-separated)</label>
+            <input type="text" class="form-control" id="ratings" placeholder="PPL, CPL, CFI, etc." required>
+        </div>
+    `;
+
+    showModal('Add Instructor', form, async () => {
+        const data = {
+            name: form.querySelector('#name').value,
+            email: form.querySelector('#email').value,
+            phone: form.querySelector('#phone').value,
+            ratings: form.querySelector('#ratings').value.split(',').map(r => r.trim()).filter(r => r)
+        };
+
+        try {
+            const response = await fetch('/api/admin/instructors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error('Failed to add instructor');
+            
+            const newInstructor = await response.json();
+            instructorData.push(newInstructor);
+            displayInstructors();
+        } catch (error) {
+            console.error('Error adding instructor:', error);
+            showError('Failed to add instructor');
+        }
+    });
 } 

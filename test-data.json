@@ -1,4 +1,34 @@
 {
+    "users": [
+        {
+            "first_name": "Admin",
+            "last_name": "User",
+            "email": "admin@example.com",
+            "password": "admin123",
+            "is_admin": true
+        },
+        {
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john@example.com",
+            "password": "password123",
+            "is_admin": false
+        },
+        {
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "email": "jane@example.com",
+            "password": "password123",
+            "is_admin": false
+        },
+        {
+            "first_name": "Bob",
+            "last_name": "Johnson",
+            "email": "bob@example.com",
+            "password": "password123",
+            "is_admin": false
+        }
+    ],
     "aircraft": [
         {
             "make_model": "Cessna 172 Skyhawk",

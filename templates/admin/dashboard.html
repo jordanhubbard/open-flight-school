@@ -171,8 +171,8 @@
                         <input type="tel" class="form-control" id="instructorPhone" required>
                     </div>
                     <div class="mb-3">
-                        <label for="certifications" class="form-label">Certifications</label>
-                        <input type="text" class="form-control" id="certifications" placeholder="Comma-separated list">
+                        <label for="ratings" class="form-label">Ratings</label>
+                        <input type="text" class="form-control" id="ratings" placeholder="Comma-separated list">
                     </div>
                     <div class="mb-3">
                         <label for="instructorStatus" class="form-label">Status</label>
@@ -445,7 +445,7 @@ async function editInstructor(id) {
         document.getElementById('instructorName').value = instructor.name;
         document.getElementById('instructorEmail').value = instructor.email;
         document.getElementById('instructorPhone').value = instructor.phone;
-        document.getElementById('certifications').value = instructor.certifications.join(', ');
+        document.getElementById('ratings').value = instructor.ratings.join(', ');
         document.getElementById('instructorStatus').value = instructor.status;
         
         new bootstrap.Modal(document.getElementById('instructorModal')).show();
@@ -461,7 +461,7 @@ async function saveInstructor() {
         name: document.getElementById('instructorName').value,
         email: document.getElementById('instructorEmail').value,
         phone: document.getElementById('instructorPhone').value,
-        certifications: document.getElementById('certifications').value.split(',').map(c => c.trim()),
+        ratings: document.getElementById('ratings').value.split(',').map(c => c.trim()),
         status: document.getElementById('instructorStatus').value
     };
     

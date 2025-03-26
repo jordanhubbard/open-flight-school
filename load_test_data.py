@@ -5,44 +5,20 @@ import json
 
 def load_test_data():
     with app.app_context():
-        # Create admin user
-        admin = User(
-            first_name='Admin',
-            last_name='User',
-            email='admin@example.com',
-            is_admin=True
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
-
-        # Create regular users
-        users = [
-            User(
-                first_name='John',
-                last_name='Doe',
-                email='john@example.com',
-                is_admin=False
-            ),
-            User(
-                first_name='Jane',
-                last_name='Smith',
-                email='jane@example.com',
-                is_admin=False
-            ),
-            User(
-                first_name='Bob',
-                last_name='Johnson',
-                email='bob@example.com',
-                is_admin=False
-            )
-        ]
-        for user in users:
-            user.set_password('password123')
-            db.session.add(user)
-
         # Load test data from JSON file
         with open('test-data.json', 'r') as f:
             test_data = json.load(f)
+
+        # Create users
+        for user_data in test_data['users']:
+            user = User(
+                first_name=user_data['first_name'],
+                last_name=user_data['last_name'],
+                email=user_data['email'],
+                is_admin=user_data['is_admin']
+            )
+            user.set_password(user_data['password'])
+            db.session.add(user)
 
         # Create aircraft
         for aircraft_data in test_data['aircraft']:
