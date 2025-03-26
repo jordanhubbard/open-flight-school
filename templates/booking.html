@@ -43,26 +43,30 @@
                 <div class="card-header">
                     <h5 class="mb-0">Available Aircraft</h5>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive position-relative" style="max-height: 400px;">
-                        <div class="scroll-arrow scroll-up" style="display: none;">
-                            <i class="bi bi-chevron-up"></i>
+                <div class="card-body p-0 position-relative">
+                    <div class="table-container">
+                        <div class="table-scroll" id="aircraftTableScroll">
+                            <table class="table table-striped mb-0">
+                                <thead class="sticky-top bg-white">
+                                    <tr>
+                                        <th>SELECT</th>
+                                        <th>MAKE/MODEL</th>
+                                        <th>TAIL NUMBER</th>
+                                        <th>TYPE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aircraftTableBody">
+                                    <!-- Aircraft will be loaded here -->
+                                </tbody>
+                            </table>
                         </div>
-                        <table class="table table-striped mb-0">
-                            <thead class="sticky-top bg-white">
-                                <tr>
-                                    <th>SELECT</th>
-                                    <th>MAKE/MODEL</th>
-                                    <th>TAIL NUMBER</th>
-                                    <th>TYPE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="aircraftTableBody">
-                                <!-- Aircraft will be loaded here -->
-                            </tbody>
-                        </table>
-                        <div class="scroll-arrow scroll-down" style="display: none;">
-                            <i class="bi bi-chevron-down"></i>
+                        <div class="table-nav-buttons">
+                            <button class="nav-button nav-up" id="aircraftScrollUp" aria-label="Scroll up">
+                                <i class="bi bi-chevron-up"></i>
+                            </button>
+                            <button class="nav-button nav-down" id="aircraftScrollDown" aria-label="Scroll down">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -75,27 +79,31 @@
                 <div class="card-header">
                     <h5 class="mb-0">Available Instructors</h5>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive position-relative" style="max-height: 400px;">
-                        <div class="scroll-arrow scroll-up" style="display: none;">
-                            <i class="bi bi-chevron-up"></i>
+                <div class="card-body p-0 position-relative">
+                    <div class="table-container">
+                        <div class="table-scroll" id="instructorsTableScroll">
+                            <table class="table table-striped mb-0">
+                                <thead class="sticky-top bg-white">
+                                    <tr>
+                                        <th>SELECT</th>
+                                        <th>NAME</th>
+                                        <th>EMAIL</th>
+                                        <th>PHONE</th>
+                                        <th>CREDENTIALS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="instructorsTableBody">
+                                    <!-- Instructors will be loaded here -->
+                                </tbody>
+                            </table>
                         </div>
-                        <table class="table table-striped mb-0">
-                            <thead class="sticky-top bg-white">
-                                <tr>
-                                    <th>SELECT</th>
-                                    <th>NAME</th>
-                                    <th>EMAIL</th>
-                                    <th>PHONE</th>
-                                    <th>CREDENTIALS</th>
-                                </tr>
-                            </thead>
-                            <tbody id="instructorsTableBody">
-                                <!-- Instructors will be loaded here -->
-                            </tbody>
-                        </table>
-                        <div class="scroll-arrow scroll-down" style="display: none;">
-                            <i class="bi bi-chevron-down"></i>
+                        <div class="table-nav-buttons">
+                            <button class="nav-button nav-up" id="instructorsScrollUp" aria-label="Scroll up">
+                                <i class="bi bi-chevron-up"></i>
+                            </button>
+                            <button class="nav-button nav-down" id="instructorsScrollDown" aria-label="Scroll down">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -233,46 +241,60 @@
     tr:hover {
         background-color: rgba(227, 242, 253, 0.5);
     }
-    .table-responsive {
-        overflow-y: auto;
+    .table-container {
+        position: relative;
+        height: 400px;
+    }
+    .table-scroll {
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+    .table-nav-buttons {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-right: 8px;
+        z-index: 3;
+    }
+    .nav-button {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background-color: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+    }
+    .nav-button:hover {
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .nav-button i {
+        font-size: 1.2rem;
+        color: #0d6efd;
+    }
+    .nav-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     .sticky-top {
         position: sticky;
         top: 0;
         z-index: 1;
+        background-color: #fff;
     }
     .card {
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-    .scroll-arrow {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: rgba(255, 255, 255, 0.9);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        z-index: 2;
-        transition: all 0.2s ease;
-    }
-    .scroll-arrow:hover {
-        background-color: #fff;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    .scroll-up {
-        top: 10px;
-    }
-    .scroll-down {
-        bottom: 10px;
-    }
-    .scroll-arrow i {
-        font-size: 1.2rem;
-        color: #0d6efd;
     }
 </style>
 <script>
@@ -317,6 +339,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial availability check
     checkAvailabilityAndBook();
+
+    // Setup table navigation
+    setupTableNavigation('aircraftTableScroll', 'aircraftScrollUp', 'aircraftScrollDown');
+    setupTableNavigation('instructorsTableScroll', 'instructorsScrollUp', 'instructorsScrollDown');
 });
 
 function updateEndTime() {
@@ -686,6 +712,44 @@ function showError(message) {
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     document.body.insertBefore(errorDiv, document.body.firstChild);
+}
+
+function setupTableNavigation(scrollContainerId, upButtonId, downButtonId) {
+    const container = document.getElementById(scrollContainerId);
+    const upButton = document.getElementById(upButtonId);
+    const downButton = document.getElementById(downButtonId);
+    const scrollAmount = 100; // pixels to scroll per click
+
+    function updateButtonStates() {
+        if (!container || !upButton || !downButton) return;
+        
+        upButton.disabled = container.scrollTop <= 0;
+        downButton.disabled = container.scrollTop + container.clientHeight >= container.scrollHeight;
+    }
+
+    if (upButton) {
+        upButton.addEventListener('click', () => {
+            container.scrollBy({
+                top: -scrollAmount,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    if (downButton) {
+        downButton.addEventListener('click', () => {
+            container.scrollBy({
+                top: scrollAmount,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    if (container) {
+        container.addEventListener('scroll', updateButtonStates);
+        // Initial button state
+        updateButtonStates();
+    }
 }
 
 // Load data when the page loads
