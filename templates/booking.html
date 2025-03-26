@@ -241,8 +241,90 @@
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 
 <style>
-    .custom-calendar {
+    /* Card styles */
+    .card {
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem;
+    }
+
+    .card-title {
+        color: #2c3e50;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .card-body {
+        background-color: #ffffff;
+        padding: 1.25rem;
+    }
+
+    /* Table styles */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #f1f4f8;
+        border-bottom: 2px solid #dee2e6;
+        color: #495057;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table tbody tr:hover {
         background-color: #f8f9fa;
+    }
+
+    .availability-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .available {
+        background-color: #e3fcef;
+        color: #0d6832;
+    }
+
+    .unavailable {
+        background-color: #ffe9e9;
+        color: #cc1f1f;
+    }
+
+    /* Form controls */
+    .form-control {
+        border-color: #ced4da;
+        border-radius: 6px;
+    }
+
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.15);
+    }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+        color: #495057;
+    }
+
+    /* Calendar styles */
+    .custom-calendar {
+        background-color: #ffffff;
         border-radius: 8px;
         padding: 1rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -266,76 +348,135 @@
     }
     
     .fc-event {
-        border-radius: 4px;
-        padding: 2px 4px;
+        border-radius: 6px;
+        padding: 4px 6px;
         margin: 1px 0;
         font-size: 0.85em;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
     .fc-event.own-booking {
-        background-color: #e8f5e9 !important;
-        border-color: #4caf50 !important;
-        color: #1b5e20 !important;
+        background-color: #ebf9eb !important;
+        border-color: #28a745 !important;
+        color: #155724 !important;
     }
     
     .fc-event.other-booking {
-        background-color: #fff3e0 !important;
-        border-color: #ff9800 !important;
-        color: #e65100 !important;
+        background-color: #fff3e6 !important;
+        border-color: #fd7e14 !important;
+        color: #804000 !important;
     }
     
     .fc-header-toolbar {
         margin-bottom: 1.5em !important;
+        padding: 0.5rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 6px;
     }
     
     .fc-toolbar-title {
         font-size: 1.5em !important;
-        color: #495057;
+        color: #2c3e50;
+        font-weight: 600;
     }
     
     .fc-button-primary {
-        background-color: #6c757d !important;
-        border-color: #6c757d !important;
+        background-color: #4a5568 !important;
+        border-color: #4a5568 !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
     .fc-button-primary:hover {
-        background-color: #5a6268 !important;
-        border-color: #545b62 !important;
+        background-color: #2d3748 !important;
+        border-color: #2d3748 !important;
     }
     
     .fc-button-primary:not(:disabled):active,
     .fc-button-primary:not(:disabled).fc-button-active {
-        background-color: #545b62 !important;
-        border-color: #4e555b !important;
+        background-color: #1a202c !important;
+        border-color: #1a202c !important;
     }
     
     .fc-timegrid-event {
-        min-height: 2em;
+        min-height: 2.5em;
     }
     
     .fc-timegrid-event .fc-event-main {
-        padding: 4px;
+        padding: 4px 6px;
     }
     
     .fc-view-harness {
         background-color: #ffffff;
-        border-radius: 4px;
-        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
     }
     
     #calendarViewSelect {
-        border-radius: 4px;
-        border: 1px solid #ced4da;
-        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid #cbd5e0;
+        padding: 0.5rem 2.25rem 0.5rem 0.75rem;
         background-color: #fff;
-        color: #495057;
+        color: #2d3748;
         cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     
     #calendarViewSelect:focus {
-        border-color: #80bdff;
-        outline: 0;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        border-color: #4299e1;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    }
+
+    /* Button styles */
+    .btn-primary {
+        background-color: #4299e1;
+        border-color: #4299e1;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary:hover {
+        background-color: #3182ce;
+        border-color: #3182ce;
+    }
+
+    .btn-secondary {
+        background-color: #718096;
+        border-color: #718096;
+    }
+
+    .btn-secondary:hover {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+
+    /* Table responsive container */
+    .table-responsive {
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Admin controls */
+    .btn-group .btn {
+        margin-right: 0.5rem;
+    }
+
+    /* Modal styles */
+    .modal-content {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        border-radius: 0 0 8px 8px;
     }
 </style>
 
