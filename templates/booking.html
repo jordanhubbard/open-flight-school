@@ -4,9 +4,35 @@
 <div class="container mt-4">
     <h2>Book a Flight</h2>
     
-    <!-- Book Now Button - Moved to top -->
-    <div class="text-center mb-4">
-        <button class="btn btn-primary btn-lg" onclick="bookNow()">Book Now</button>
+    <!-- Book Now Button and Time Selection - Top -->
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-3">
+            <label for="bookingDate" class="form-label">Date</label>
+            <input type="date" class="form-control" id="bookingDate" required>
+        </div>
+        <div class="col-md-2">
+            <label for="startTime" class="form-label">Start Time</label>
+            <input type="time" class="form-control" id="startTimeInput" required>
+        </div>
+        <div class="col-md-2">
+            <label for="duration" class="form-label">Duration (hours)</label>
+            <select class="form-select" id="durationSelect" required>
+                <option value="1">1 hour</option>
+                <option value="1.5">1.5 hours</option>
+                <option value="2">2 hours</option>
+                <option value="2.5">2.5 hours</option>
+                <option value="3">3 hours</option>
+                <option value="3.5">3.5 hours</option>
+                <option value="4">4 hours</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="endTime" class="form-label">End Time</label>
+            <input type="time" class="form-control" id="endTimeInput" readonly>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="checkAvailabilityAndBook()">Book Now</button>
+        </div>
     </div>
     
     <!-- Aircraft and Instructors Section - Side by Side -->
@@ -206,6 +232,9 @@
     .selected-row {
         background-color: #e3f2fd !important;
     }
+    tr:hover {
+        background-color: rgba(227, 242, 253, 0.5);
+    }
     .table-responsive {
         overflow-y: auto;
     }
@@ -255,81 +284,90 @@ let instructors = [];
 let selectedAircraft = null;
 let selectedInstructor = null;
 
-function setupScrollArrows(containerId) {
-    const container = document.querySelector(containerId);
-    if (!container) return;
+// Set default date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const dateInput = document.getElementById('bookingDate');
+    dateInput.value = today.toISOString().split('T')[0];
+    dateInput.min = today.toISOString().split('T')[0];
+    
+    // Add event listeners for time and duration changes
+    document.getElementById('startTimeInput').addEventListener('change', updateEndTime);
+    document.getElementById('durationSelect').addEventListener('change', updateEndTime);
+    
+    // Load initial data
+    loadData();
+});
 
-    const scrollUp = container.querySelector('.scroll-up');
-    const scrollDown = container.querySelector('.scroll-down');
-    const tableBody = container.querySelector('tbody');
-
-    function updateScrollArrows() {
-        const scrollTop = container.scrollTop;
-        const scrollHeight = container.scrollHeight;
-        const clientHeight = container.clientHeight;
-
-        // Show/hide up arrow
-        if (scrollTop > 0) {
-            scrollUp.style.display = 'flex';
-        } else {
-            scrollUp.style.display = 'none';
-        }
-
-        // Show/hide down arrow
-        if (scrollTop < scrollHeight - clientHeight) {
-            scrollDown.style.display = 'flex';
-        } else {
-            scrollDown.style.display = 'none';
-        }
+function updateEndTime() {
+    const startTimeInput = document.getElementById('startTimeInput');
+    const durationSelect = document.getElementById('durationSelect');
+    const endTimeInput = document.getElementById('endTimeInput');
+    
+    if (startTimeInput.value) {
+        const [hours, minutes] = startTimeInput.value.split(':');
+        const startDate = new Date();
+        startDate.setHours(parseInt(hours), parseInt(minutes), 0);
+        
+        const duration = parseFloat(durationSelect.value);
+        const durationMs = duration * 60 * 60 * 1000;
+        
+        const endDate = new Date(startDate.getTime() + durationMs);
+        endTimeInput.value = endDate.toTimeString().slice(0, 5);
     }
-
-    function scroll(direction) {
-        const scrollAmount = 100; // Adjust this value to control scroll speed
-        container.scrollBy({
-            top: direction * scrollAmount,
-            behavior: 'smooth'
-        });
-    }
-
-    // Add event listeners
-    scrollUp.addEventListener('click', () => scroll(-1));
-    scrollDown.addEventListener('click', () => scroll(1));
-    container.addEventListener('scroll', updateScrollArrows);
-    container.addEventListener('resize', updateScrollArrows);
-
-    // Initial check
-    updateScrollArrows();
 }
 
-async function loadData() {
+async function checkAvailabilityAndBook() {
+    const dateInput = document.getElementById('bookingDate');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    
+    if (!dateInput.value || !startTimeInput.value || !endTimeInput.value) {
+        showError('Please select a date, start time, and duration');
+        return;
+    }
+    
+    const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
+    const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
+    
     try {
-        // Load bookings
-        const bookingsResponse = await fetch('/api/bookings');
-        if (!bookingsResponse.ok) throw new Error('Failed to load bookings');
-        bookings = await bookingsResponse.json();
+        const response = await fetch('/api/check-availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                start_time: startDateTime.toISOString(),
+                end_time: endDateTime.toISOString()
+            })
+        });
         
-        // Load aircraft
-        const aircraftResponse = await fetch('/api/available-aircraft');
-        if (!aircraftResponse.ok) throw new Error('Failed to load aircraft');
-        aircraft = await aircraftResponse.json();
+        if (!response.ok) {
+            throw new Error('Failed to check availability');
+        }
         
-        // Load instructors
-        const instructorsResponse = await fetch('/api/available-instructors');
-        if (!instructorsResponse.ok) throw new Error('Failed to load instructors');
-        instructors = await instructorsResponse.json();
+        const availabilityData = await response.json();
         
+        // Update aircraft and instructors with availability information
+        aircraft = availabilityData.aircraft;
+        instructors = availabilityData.instructors;
+        
+        // Reset selections
+        selectedAircraft = null;
+        selectedInstructor = null;
+        
+        // Update displays
         displayAircraft();
         displayInstructors();
-        displayBookings();
-        populateSelects();
-        initializeCalendar();
         
-        // Setup scroll arrows after data is loaded
-        setupScrollArrows('#aircraftTableBody').closest('.table-responsive');
-        setupScrollArrows('#instructorsTableBody').closest('.table-responsive');
+        if (!aircraft.some(a => a.available) || !instructors.some(i => i.available)) {
+            showError('No available aircraft or instructors for the selected time slot');
+            return;
+        }
+        
     } catch (error) {
-        console.error('Error loading data:', error);
-        showError('Failed to load data');
+        console.error('Error checking availability:', error);
+        showError('Failed to check availability');
     }
 }
 
@@ -338,11 +376,13 @@ function displayAircraft() {
     if (!tableBody) return;
 
     tableBody.innerHTML = aircraft.map(a => `
-        <tr class="${selectedAircraft === a.id ? 'selected-row' : ''}" onclick="selectAircraft(${a.id})">
+        <tr class="${selectedAircraft === a.id ? 'selected-row' : ''} ${!a.available ? 'text-muted' : ''}" 
+            onclick="${a.available ? `selectAircraft(${a.id}, this)` : ''}" 
+            style="cursor: ${a.available ? 'pointer' : 'not-allowed'}">
             <td>
                 <input type="radio" name="aircraft" value="${a.id}" 
-                    ${selectedAircraft === a.id ? 'checked' : ''} 
-                    onchange="selectAircraft(${a.id})">
+                    ${selectedAircraft === a.id ? 'checked' : ''}
+                    ${!a.available ? 'disabled' : ''}>
             </td>
             <td>${a.make_model}</td>
             <td>${a.tail_number}</td>
@@ -356,11 +396,13 @@ function displayInstructors() {
     if (!tableBody) return;
 
     tableBody.innerHTML = instructors.map(i => `
-        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''}" onclick="selectInstructor(${i.id})">
+        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
+            onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
+            style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
             <td>
                 <input type="radio" name="instructor" value="${i.id}" 
-                    ${selectedInstructor === i.id ? 'checked' : ''} 
-                    onchange="selectInstructor(${i.id})">
+                    ${selectedInstructor === i.id ? 'checked' : ''}
+                    ${!i.available ? 'disabled' : ''}>
             </td>
             <td>${i.name}</td>
             <td>${i.email}</td>
@@ -370,40 +412,42 @@ function displayInstructors() {
     `).join('');
 }
 
-function displayBookings() {
-    const tableBody = document.querySelector('#bookingsTableBody');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = bookings.map(booking => `
-        <tr>
-            <td>${new Date(booking.start_time).toLocaleDateString()}</td>
-            <td>${new Date(booking.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
-                ${new Date(booking.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-            <td>${booking.aircraft || ''}</td>
-            <td>${booking.instructor || ''}</td>
-            <td>${booking.status}</td>
-            <td>
-                ${booking.status !== 'cancelled' ? `
-                    <button class="btn btn-link btn-sm p-0 me-2" onclick="editBooking(${booking.id})" title="Edit booking">
-                        <i class="bi bi-pencil text-primary"></i>
-                    </button>
-                    <button class="btn btn-link btn-sm p-0" onclick="confirmDelete(${booking.id})" title="Cancel booking">
-                        <i class="bi bi-trash text-danger"></i>
-                    </button>
-                ` : ''}
-            </td>
-        </tr>
-    `).join('');
-}
-
-function selectAircraft(id) {
+function selectAircraft(id, row) {
+    // Remove selected class from all rows
+    const rows = document.querySelectorAll('#aircraftTableBody tr');
+    rows.forEach(r => r.classList.remove('selected-row'));
+    
+    // Add selected class to clicked row
+    if (row) {
+        row.classList.add('selected-row');
+    }
+    
     selectedAircraft = id;
-    displayAircraft();
+    
+    // Update radio button
+    const radio = row.querySelector('input[type="radio"]');
+    if (radio) {
+        radio.checked = true;
+    }
 }
 
-function selectInstructor(id) {
+function selectInstructor(id, row) {
+    // Remove selected class from all rows
+    const rows = document.querySelectorAll('#instructorsTableBody tr');
+    rows.forEach(r => r.classList.remove('selected-row'));
+    
+    // Add selected class to clicked row
+    if (row) {
+        row.classList.add('selected-row');
+    }
+    
     selectedInstructor = id;
-    displayInstructors();
+    
+    // Update radio button
+    const radio = row.querySelector('input[type="radio"]');
+    if (radio) {
+        radio.checked = true;
+    }
 }
 
 function bookNow() {
