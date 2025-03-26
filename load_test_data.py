@@ -1,6 +1,7 @@
 from app import app, db
 from models import User, Aircraft, Instructor, Booking
 from datetime import datetime, timedelta
+import json
 
 def load_test_data():
     with app.app_context():
@@ -24,35 +25,28 @@ def load_test_data():
         user.set_password('password123')
         db.session.add(user)
 
+        # Load test data from JSON file
+        with open('test-data.json', 'r') as f:
+            test_data = json.load(f)
+
         # Create aircraft
-        aircraft1 = Aircraft(
-            tail_number='N12345',
-            make_model='Cessna 172',
-            type='Single Engine'
-        )
-        aircraft2 = Aircraft(
-            tail_number='N67890',
-            make_model='Piper PA-28',
-            type='Single Engine'
-        )
-        db.session.add(aircraft1)
-        db.session.add(aircraft2)
+        for aircraft_data in test_data['aircraft']:
+            aircraft = Aircraft(
+                tail_number=aircraft_data['tail_number'],
+                make_model=aircraft_data['make_model'],
+                type=aircraft_data['type']
+            )
+            db.session.add(aircraft)
 
         # Create instructors
-        instructor1 = Instructor(
-            name='Jane Smith',
-            email='jane@example.com',
-            phone='555-0101',
-            ratings='CFI,CFII,MEI'
-        )
-        instructor2 = Instructor(
-            name='Bob Johnson',
-            email='bob@example.com',
-            phone='555-0102',
-            ratings='CFI,CFII'
-        )
-        db.session.add(instructor1)
-        db.session.add(instructor2)
+        for instructor_data in test_data['instructors']:
+            instructor = Instructor(
+                name=instructor_data['name'],
+                email=instructor_data['email'],
+                phone=instructor_data['phone'],
+                ratings=','.join(instructor_data['ratings'])
+            )
+            db.session.add(instructor)
 
         # Create some bookings
         now = datetime.utcnow()
@@ -60,16 +54,16 @@ def load_test_data():
             start_time=now + timedelta(days=1, hours=9),
             end_time=now + timedelta(days=1, hours=11),
             user_id=2,  # John Doe
-            aircraft_id=1,  # Cessna 172
-            instructor_id=1,  # Jane Smith
+            aircraft_id=1,  # First aircraft
+            instructor_id=1,  # First instructor
             status='confirmed'
         )
         booking2 = Booking(
             start_time=now + timedelta(days=2, hours=13),
             end_time=now + timedelta(days=2, hours=15),
             user_id=2,  # John Doe
-            aircraft_id=2,  # Piper PA-28
-            instructor_id=2,  # Bob Johnson
+            aircraft_id=2,  # Second aircraft
+            instructor_id=2,  # Second instructor
             status='pending'
         )
         db.session.add(booking1)
