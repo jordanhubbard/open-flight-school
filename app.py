@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app, session
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_mail import Message
 from datetime import datetime, timedelta
