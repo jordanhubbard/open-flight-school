@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Book a Flight</h2>
+    
+    <!-- Available Aircraft Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Available Aircraft</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>SELECT</th>
+                            <th>MAKE/MODEL</th>
+                            <th>TAIL NUMBER</th>
+                            <th>TYPE</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aircraftTableBody">
+                        <!-- Aircraft will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Instructors Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Available Instructors</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>SELECT</th>
+                            <th>NAME</th>
+                            <th>EMAIL</th>
+                            <th>PHONE</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="instructorsTableBody">
+                        <!-- Instructors will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Master Calendar Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Master Calendar</h5>
+        </div>
+        <div class="card-body">
+            <div id="calendar"></div>
+        </div>
+    </div>
+
+    <!-- Book Now Button -->
+    <div class="text-center mb-4">
+        <button class="btn btn-primary btn-lg" onclick="bookNow()">Book Now</button>
+    </div>
+
+    <!-- My Bookings Section -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">My Bookings</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>TIME</th>
+                            <th>AIRCRAFT</th>
+                            <th>INSTRUCTOR</th>
+                            <th>STATUS</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody">
+                        <!-- Bookings will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Form Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Book a Flight</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookingForm">
+                    <div class="mb-3">
+                        <label for="startTime" class="form-label">Start Time</label>
+                        <input type="datetime-local" class="form-control" id="startTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endTime" class="form-label">End Time</label>
+                        <input type="datetime-local" class="form-control" id="endTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="aircraftSelect" class="form-label">Aircraft</label>
+                        <select class="form-select" id="aircraftSelect" required>
+                            <!-- Aircraft options will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="instructorSelect" class="form-label">Instructor</label>
+                        <select class="form-select" id="instructorSelect" required>
+                            <!-- Instructor options will be loaded here -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveBooking()">Book Flight</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Booking Modal -->
+<div class="modal fade" id="editBookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBookingForm">
+                    <input type="hidden" id="editBookingId">
+                    <div class="mb-3">
+                        <label for="editStartTime" class="form-label">Start Time</label>
+                        <input type="datetime-local" class="form-control" id="editStartTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEndTime" class="form-label">End Time</label>
+                        <input type="datetime-local" class="form-control" id="editEndTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAircraftSelect" class="form-label">Aircraft</label>
+                        <select class="form-select" id="editAircraftSelect" required>
+                            <!-- Aircraft options will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstructorSelect" class="form-label">Instructor</label>
+                        <select class="form-select" id="editInstructorSelect" required>
+                            <!-- Instructor options will be loaded here -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveBooking()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Add Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+<!-- Add FullCalendar -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script>
+let bookings = [];
+let aircraft = [];
+let instructors = [];
+let selectedAircraft = null;
+let selectedInstructor = null;
+
+async function loadData() {
+    try {
+        // Load bookings
+        const bookingsResponse = await fetch('/api/bookings');
+        if (!bookingsResponse.ok) throw new Error('Failed to load bookings');
+        bookings = await bookingsResponse.json();
+        
+        // Load aircraft
+        const aircraftResponse = await fetch('/api/available-aircraft');
+        if (!aircraftResponse.ok) throw new Error('Failed to load aircraft');
+        aircraft = await aircraftResponse.json();
+        
+        // Load instructors
+        const instructorsResponse = await fetch('/api/available-instructors');
+        if (!instructorsResponse.ok) throw new Error('Failed to load instructors');
+        instructors = await instructorsResponse.json();
+        
+        displayAircraft();
+        displayInstructors();
+        displayBookings();
+        populateSelects();
+        initializeCalendar();
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showError('Failed to load data');
+    }
+}
+
+function displayAircraft() {
+    const tableBody = document.querySelector('#aircraftTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = aircraft.map(a => `
+        <tr>
+            <td>
+                <input type="radio" name="aircraft" value="${a.id}" 
+                    ${selectedAircraft === a.id ? 'checked' : ''} 
+                    onchange="selectAircraft(${a.id})">
+            </td>
+            <td>${a.make_model}</td>
+            <td>${a.tail_number}</td>
+            <td>${a.type}</td>
+            <td>${a.status}</td>
+        </tr>
+    `).join('');
+}
+
+function displayInstructors() {
+    const tableBody = document.querySelector('#instructorsTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = instructors.map(i => `
+        <tr>
+            <td>
+                <input type="radio" name="instructor" value="${i.id}" 
+                    ${selectedInstructor === i.id ? 'checked' : ''} 
+                    onchange="selectInstructor(${i.id})">
+            </td>
+            <td>${i.name}</td>
+            <td>${i.email}</td>
+            <td>${i.phone}</td>
+            <td>${i.status}</td>
+        </tr>
+    `).join('');
+}
+
+function displayBookings() {
+    const tableBody = document.querySelector('#bookingsTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = bookings.map(booking => `
+        <tr>
+            <td>${new Date(booking.start_time).toLocaleDateString()}</td>
+            <td>${new Date(booking.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
+                ${new Date(booking.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+            <td>${booking.aircraft || ''}</td>
+            <td>${booking.instructor || ''}</td>
+            <td>${booking.status}</td>
+            <td>
+                ${booking.status !== 'cancelled' ? `
+                    <button class="btn btn-link btn-sm p-0 me-2" onclick="editBooking(${booking.id})" title="Edit booking">
+                        <i class="bi bi-pencil text-primary"></i>
+                    </button>
+                    <button class="btn btn-link btn-sm p-0" onclick="confirmDelete(${booking.id})" title="Cancel booking">
+                        <i class="bi bi-trash text-danger"></i>
+                    </button>
+                ` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function selectAircraft(id) {
+    selectedAircraft = id;
+    displayAircraft();
+}
+
+function selectInstructor(id) {
+    selectedInstructor = id;
+    displayInstructors();
+}
+
+function bookNow() {
+    if (!selectedAircraft || !selectedInstructor) {
+        showError('Please select both an aircraft and an instructor');
+        return;
+    }
+    
+    document.getElementById('aircraftSelect').value = selectedAircraft;
+    document.getElementById('instructorSelect').value = selectedInstructor;
+    
+    new bootstrap.Modal(document.getElementById('bookingModal')).show();
+}
+
+function initializeCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: bookings.map(booking => ({
+            title: `${booking.aircraft} - ${booking.instructor}`,
+            start: booking.start_time,
+            end: booking.end_time,
+            backgroundColor: booking.status === 'cancelled' ? '#dc3545' : '#0d6efd'
+        }))
+    });
+    calendar.render();
+}
+
+function populateSelects() {
+    const aircraftSelect = document.getElementById('aircraftSelect');
+    const instructorSelect = document.getElementById('instructorSelect');
+    const editAircraftSelect = document.getElementById('editAircraftSelect');
+    const editInstructorSelect = document.getElementById('editInstructorSelect');
+    
+    if (aircraftSelect) {
+        aircraftSelect.innerHTML = aircraft.map(a => `
+            <option value="${a.id}">${a.make_model} (${a.tail_number})</option>
+        `).join('');
+    }
+    
+    if (instructorSelect) {
+        instructorSelect.innerHTML = instructors.map(i => `
+            <option value="${i.id}">${i.name}</option>
+        `).join('');
+    }
+    
+    if (editAircraftSelect) {
+        editAircraftSelect.innerHTML = aircraft.map(a => `
+            <option value="${a.id}">${a.make_model} (${a.tail_number})</option>
+        `).join('');
+    }
+    
+    if (editInstructorSelect) {
+        editInstructorSelect.innerHTML = instructors.map(i => `
+            <option value="${i.id}">${i.name}</option>
+        `).join('');
+    }
+}
+
+function confirmDelete(id) {
+    if (confirm('Are you sure you want to cancel this flight?')) {
+        cancelBooking(id);
+    }
+}
+
+async function cancelBooking(id) {
+    try {
+        const response = await fetch(`/api/bookings/${id}/cancel`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            loadData();
+            showSuccess('Booking cancelled successfully');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to cancel booking');
+        }
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        showError('Failed to cancel booking');
+    }
+}
+
+function editBooking(id) {
+    const booking = bookings.find(b => b.id === id);
+    if (!booking) return;
+    
+    document.getElementById('editBookingId').value = booking.id;
+    document.getElementById('editStartTime').value = booking.start_time.slice(0, 16);
+    document.getElementById('editEndTime').value = booking.end_time.slice(0, 16);
+    document.getElementById('editAircraftSelect').value = booking.aircraft_id || '';
+    document.getElementById('editInstructorSelect').value = booking.instructor_id || '';
+    
+    new bootstrap.Modal(document.getElementById('editBookingModal')).show();
+}
+
+async function saveBooking() {
+    const form = document.getElementById('bookingForm');
+    const data = {
+        start_time: form.startTime.value,
+        end_time: form.endTime.value,
+        aircraft_id: form.aircraftSelect.value,
+        instructor_id: form.instructorSelect.value
+    };
+    
+    try {
+        const response = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+            loadData();
+            showSuccess('Booking created successfully');
+            selectedAircraft = null;
+            selectedInstructor = null;
+            displayAircraft();
+            displayInstructors();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to create booking');
+        }
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        showError('Failed to create booking');
+    }
+}
+
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success alert-dismissible fade show';
+    successDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.insertBefore(successDiv, document.body.firstChild);
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.insertBefore(errorDiv, document.body.firstChild);
+}
+
+// Load data when the page loads
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+{% endblock %} 

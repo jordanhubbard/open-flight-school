@@ -492,10 +492,9 @@ def delete_booking(id):
 @app.route('/booking')
 @login_required
 def booking_page():
-    # Redirect admin users to admin dashboard
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard'))
-    return render_template('bookings.html')
+    return render_template('booking.html')
 
 @app.route('/bookings')
 @login_required
