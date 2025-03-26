@@ -111,18 +111,8 @@
         </div>
     </div>
 
-    <!-- Master Calendar Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Master Calendar</h5>
-        </div>
-        <div class="card-body">
-            <div id="calendar"></div>
-        </div>
-    </div>
-
     <!-- My Bookings Section -->
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">My Bookings</h5>
         </div>
@@ -146,6 +136,16 @@
             </div>
         </div>
     </div>
+
+    <!-- Master Calendar Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Master Calendar</h5>
+        </div>
+        <div class="card-body">
+            <div id="calendar"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Booking Form Modal -->
@@ -160,21 +160,29 @@
                 <form id="bookingForm">
                     <div class="mb-3">
                         <label class="form-label">Start Time</label>
-                        <input type="datetime-local" class="form-control" id="startTime" required readonly>
+                        <input type="datetime-local" class="form-control" id="startTime" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">End Time</label>
-                        <input type="datetime-local" class="form-control" id="endTime" required readonly>
+                        <input type="datetime-local" class="form-control" id="endTime" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Aircraft</label>
-                        <input type="hidden" id="aircraftSelect">
-                        <div class="form-control" id="selectedAircraftText" readonly></div>
+                        <div id="aircraftSelectContainer" style="display: none;">
+                            <select class="form-select" id="aircraftSelect" required>
+                                <!-- Aircraft options will be loaded here -->
+                            </select>
+                        </div>
+                        <div id="selectedAircraftText" class="form-control"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Instructor</label>
-                        <input type="hidden" id="instructorSelect">
-                        <div class="form-control" id="selectedInstructorText" readonly></div>
+                        <div id="instructorSelectContainer" style="display: none;">
+                            <select class="form-select" id="instructorSelect" required>
+                                <!-- Instructor options will be loaded here -->
+                            </select>
+                        </div>
+                        <div id="selectedInstructorText" class="form-control"></div>
                     </div>
                 </form>
             </div>
@@ -579,12 +587,8 @@ function displayBookings() {
             minute: '2-digit'
         })}`;
 
-        // Status badge styling
-        const statusClass = {
-            'pending': 'bg-warning',
-            'confirmed': 'bg-success',
-            'cancelled': 'bg-danger'
-        }[booking.status] || 'bg-secondary';
+        // Status badge styling - only confirmed or cancelled
+        const statusClass = booking.status === 'cancelled' ? 'bg-danger' : 'bg-success';
 
         return `
             <tr>
@@ -624,17 +628,9 @@ function initializeCalendar() {
             title: `${booking.aircraft} - ${booking.instructor}`,
             start: booking.start_time,
             end: booking.end_time,
-            backgroundColor: {
-                'pending': '#ffc107',
-                'confirmed': '#198754',
-                'cancelled': '#dc3545'
-            }[booking.status] || '#6c757d',
-            borderColor: {
-                'pending': '#ffc107',
-                'confirmed': '#198754',
-                'cancelled': '#dc3545'
-            }[booking.status] || '#6c757d',
-            textColor: booking.status === 'pending' ? '#000' : '#fff'
+            backgroundColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
+            borderColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
+            textColor: '#fff'
         })),
         eventClick: function(info) {
             const booking = bookings.find(b => b.id === parseInt(info.event.id));

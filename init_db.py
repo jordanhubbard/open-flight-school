@@ -74,7 +74,7 @@ def init_db():
                     'user_id': 1,
                     'aircraft_id': 2,
                     'instructor_id': 2,
-                    'status': 'pending'
+                    'status': 'confirmed'
                 }
             ]
             

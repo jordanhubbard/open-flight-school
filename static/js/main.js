@@ -230,19 +230,21 @@ function displayBookings(bookings) {
             <td>${booking.aircraft}</td>
             <td>${booking.instructor}</td>
             <td>
-                <span class="badge ${booking.status === 'confirmed' ? 'bg-success' : 'bg-warning'}">
+                <span class="badge ${booking.status === 'cancelled' ? 'bg-danger' : 'bg-success'}">
                     ${booking.status}
                 </span>
             </td>
             <td>
-                <button type="button" class="btn btn-link text-primary p-0 me-2" onclick="editBooking(${booking.id})" 
-                        title="Edit booking">
-                    <i class="bi bi-pencil-fill"></i>
-                </button>
-                <button type="button" class="btn btn-link text-danger p-0" onclick="deleteBooking(${booking.id})"
-                        title="Cancel booking">
-                    <i class="bi bi-trash-fill"></i>
-                </button>
+                ${booking.status !== 'cancelled' ? `
+                    <button type="button" class="btn btn-link text-primary p-0 me-2" onclick="editBooking(${booking.id})" 
+                            title="Edit booking">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button type="button" class="btn btn-link text-danger p-0" onclick="deleteBooking(${booking.id})"
+                            title="Cancel booking">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                ` : ''}
             </td>
         `;
         tbody.appendChild(row);
@@ -479,29 +481,133 @@ async function apiCall(url, method = 'GET', data = null) {
 }
 
 function bookNow() {
-    const selectedAircraft = document.querySelector('input[name="aircraft"]:checked');
-    const selectedInstructor = document.querySelector('input[name="instructor"]:checked');
-    
     if (!selectedAircraft || !selectedInstructor) {
         showError('Please select both an aircraft and an instructor');
         return;
     }
+
+    // Get the selected date and times
+    const dateInput = document.getElementById('bookingDate');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
     
-    const startTime = document.getElementById('startTime').value;
-    const endTime = document.getElementById('endTime').value;
+    // Create full datetime strings
+    const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
+    const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
     
-    if (!startTime || !endTime) {
-        showError('Please select both start and end times');
-        return;
+    // First, check if the selected resources are still available
+    checkAvailability(startDateTime, endDateTime)
+        .then(availabilityData => {
+            const selectedAircraftAvailable = availabilityData.aircraft.find(a => a.id === selectedAircraft)?.available;
+            const selectedInstructorAvailable = availabilityData.instructors.find(i => i.id === selectedInstructor)?.available;
+
+            // Set the values in the booking modal
+            const startTimeField = document.getElementById('startTime');
+            const endTimeField = document.getElementById('endTime');
+            const aircraftSelect = document.getElementById('aircraftSelect');
+            const instructorSelect = document.getElementById('instructorSelect');
+            const selectedAircraftText = document.getElementById('selectedAircraftText');
+            const selectedInstructorText = document.getElementById('selectedInstructorText');
+
+            // Set datetime values
+            startTimeField.value = startDateTime.toISOString().slice(0, 16);
+            endTimeField.value = endDateTime.toISOString().slice(0, 16);
+
+            // Get the selected objects
+            const selectedAircraftObj = aircraft.find(a => a.id === selectedAircraft);
+            const selectedInstructorObj = instructors.find(i => i.id === selectedInstructor);
+
+            // Set the form values
+            aircraftSelect.value = selectedAircraft;
+            instructorSelect.value = selectedInstructor;
+            selectedAircraftText.textContent = `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
+            selectedInstructorText.textContent = selectedInstructorObj.name;
+
+            // If either resource is no longer available, show warning and enable editing
+            if (!selectedAircraftAvailable || !selectedInstructorAvailable) {
+                showWarning('One or more selected resources are no longer available for the chosen time slot. Please adjust your selection.');
+                
+                // Enable editing of date/time fields
+                startTimeField.removeAttribute('readonly');
+                endTimeField.removeAttribute('readonly');
+                
+                // Show the aircraft and instructor dropdowns instead of text
+                document.getElementById('aircraftSelectContainer').style.display = 'block';
+                document.getElementById('instructorSelectContainer').style.display = 'block';
+                document.getElementById('selectedAircraftText').style.display = 'none';
+                document.getElementById('selectedInstructorText').style.display = 'none';
+
+                // Populate the dropdowns with available options
+                populateBookingFormSelects(availabilityData.aircraft, availabilityData.instructors);
+            } else {
+                // Resources are available, keep fields readonly
+                startTimeField.setAttribute('readonly', true);
+                endTimeField.setAttribute('readonly', true);
+                
+                // Show the text displays instead of dropdowns
+                document.getElementById('aircraftSelectContainer').style.display = 'none';
+                document.getElementById('instructorSelectContainer').style.display = 'none';
+                document.getElementById('selectedAircraftText').style.display = 'block';
+                document.getElementById('selectedInstructorText').style.display = 'block';
+            }
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error checking availability:', error);
+            showError('Failed to verify resource availability');
+        });
+}
+
+async function checkAvailability(startDateTime, endDateTime) {
+    try {
+        const response = await fetch('/api/check-availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                start_time: startDateTime.toISOString(),
+                end_time: endDateTime.toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to check availability');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error checking availability:', error);
+        throw error;
     }
-    
-    // Create booking
-    createBooking({
-        aircraft_id: selectedAircraft.value,
-        instructor_id: selectedInstructor.value,
-        start_time: startTime,
-        end_time: endTime
-    });
+}
+
+function populateBookingFormSelects(availableAircraft, availableInstructors) {
+    const aircraftSelect = document.getElementById('aircraftSelect');
+    const instructorSelect = document.getElementById('instructorSelect');
+
+    // Populate aircraft dropdown
+    aircraftSelect.innerHTML = availableAircraft
+        .map(a => `<option value="${a.id}" ${!a.available ? 'disabled' : ''}>${a.make_model} (${a.tail_number})${!a.available ? ' - Unavailable' : ''}</option>`)
+        .join('');
+
+    // Populate instructor dropdown
+    instructorSelect.innerHTML = availableInstructors
+        .map(i => `<option value="${i.id}" ${!i.available ? 'disabled' : ''}>${i.name}${!i.available ? ' - Unavailable' : ''}</option>`)
+        .join('');
+}
+
+function showWarning(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.modal-body').insertBefore(alertDiv, document.querySelector('.modal-body').firstChild);
 }
 
 // Initialize when DOM is loaded
@@ -695,53 +801,107 @@ async function loadAvailableInstructors() {
 }
 
 function displayAircraft(aircraft) {
-    const listContainer = document.getElementById('aircraftList');
-    if (!listContainer) return;
+    const tableBody = document.querySelector('#aircraftTableBody');
+    if (!tableBody) return;
 
-    listContainer.innerHTML = '';
-    aircraft.forEach(plane => {
-        const status = plane.status || plane.availability || 'available';
-        const item = document.createElement('div');
-        item.className = `list-group-item list-group-item-action ${status === 'available' ? '' : 'disabled'}`;
-        item.innerHTML = `
-            <div class="d-flex w-100 justify-content-between align-items-center">
-                <div>
-                    <input type="radio" name="aircraft" value="${plane.id}" class="form-check-input me-2"
-                           ${status === 'available' ? '' : 'disabled'}>
-                    <strong>${plane.make_model}</strong> (${plane.tail_number})
-                </div>
-                <span class="badge ${status === 'available' ? 'bg-success' : 'bg-warning'}">
-                    ${status === 'available' ? 'Available' : 'Unavailable'}
-                </span>
-            </div>
-            <small class="text-muted">${plane.type || 'N/A'}</small>
-        `;
-        listContainer.appendChild(item);
+    tableBody.innerHTML = aircraft.map(a => `
+        <tr class="${selectedAircraft === a.id ? 'selected-row' : ''} ${!a.available ? 'text-muted' : ''}" 
+            onclick="${a.available ? `selectAircraft(${a.id}, this)` : ''}" 
+            style="cursor: ${a.available ? 'pointer' : 'not-allowed'}">
+            <td>
+                <input type="radio" name="aircraft" value="${a.id}" 
+                    ${selectedAircraft === a.id ? 'checked' : ''}
+                    ${!a.available ? 'disabled' : ''}>
+            </td>
+            <td>${a.make_model}</td>
+            <td>${a.tail_number}</td>
+            <td>${a.type}</td>
+        </tr>
+    `).join('');
+
+    // Add click event listeners to rows
+    tableBody.querySelectorAll('tr').forEach(row => {
+        if (!row.classList.contains('text-muted')) {
+            row.addEventListener('click', function() {
+                const radioBtn = this.querySelector('input[type="radio"]');
+                if (radioBtn && !radioBtn.disabled) {
+                    selectAircraft(parseInt(radioBtn.value), this);
+                }
+            });
+        }
     });
 }
 
 function displayInstructors(instructors) {
-    const listContainer = document.getElementById('instructorList');
-    if (!listContainer) return;
+    const tableBody = document.querySelector('#instructorsTableBody');
+    if (!tableBody) return;
 
-    listContainer.innerHTML = '';
-    instructors.forEach(instructor => {
-        const status = instructor.status || instructor.availability || 'available';
-        const item = document.createElement('div');
-        item.className = `list-group-item list-group-item-action ${status === 'available' ? '' : 'disabled'}`;
-        item.innerHTML = `
-            <div class="d-flex w-100 justify-content-between align-items-center">
-                <div>
-                    <input type="radio" name="instructor" value="${instructor.id}" class="form-check-input me-2"
-                           ${status === 'available' ? '' : 'disabled'}>
-                    <strong>${instructor.name}</strong>
-                </div>
-                <span class="badge ${status === 'available' ? 'bg-success' : 'bg-warning'}">
-                    ${status === 'available' ? 'Available' : 'Unavailable'}
-                </span>
-            </div>
-            <small class="text-muted">${instructor.email} | ${instructor.phone || 'N/A'}</small>
-        `;
-        listContainer.appendChild(item);
+    tableBody.innerHTML = instructors.map(i => `
+        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
+            onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
+            style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
+            <td>
+                <input type="radio" name="instructor" value="${i.id}" 
+                    ${selectedInstructor === i.id ? 'checked' : ''}
+                    ${!i.available ? 'disabled' : ''}>
+            </td>
+            <td>${i.name}</td>
+            <td>${i.email}</td>
+            <td>${i.phone}</td>
+            <td>${i.credentials || 'N/A'}</td>
+        </tr>
+    `).join('');
+
+    // Add click event listeners to rows
+    tableBody.querySelectorAll('tr').forEach(row => {
+        if (!row.classList.contains('text-muted')) {
+            row.addEventListener('click', function() {
+                const radioBtn = this.querySelector('input[type="radio"]');
+                if (radioBtn && !radioBtn.disabled) {
+                    selectInstructor(parseInt(radioBtn.value), this);
+                }
+            });
+        }
     });
+}
+
+async function saveBooking() {
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const aircraftId = document.getElementById('aircraftSelect').value;
+    const instructorId = document.getElementById('instructorSelect').value;
+    
+    const data = {
+        start_time: startTime,
+        end_time: endTime,
+        aircraft_id: parseInt(aircraftId),
+        instructor_id: parseInt(instructorId),
+        status: 'confirmed'  // Explicitly set status to confirmed
+    };
+    
+    try {
+        const response = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const responseData = await response.json();
+        
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+            await loadData();  // Reload all data
+            showSuccess('Booking created successfully');
+            selectedAircraft = null;
+            selectedInstructor = null;
+            await checkAvailabilityAndBook(false);  // Refresh availability
+        } else {
+            showError(responseData.error || 'Failed to create booking');
+        }
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        showError('Failed to create booking');
+    }
 } 

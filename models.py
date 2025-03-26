@@ -84,7 +84,7 @@ class Instructor(db.Model):
             'name': self.name,
             'email': self.email,
             'phone': self.phone,
-            'ratings': self.ratings.split(',') if self.ratings else [],
+            'credentials': self.ratings,
             'created_at': self.created_at.isoformat()
         }
 
@@ -95,7 +95,7 @@ class Booking(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     aircraft_id = db.Column(db.Integer, db.ForeignKey('aircraft.id'))
     instructor_id = db.Column(db.Integer, db.ForeignKey('instructor.id'))
-    status = db.Column(db.String(20), default='pending')
+    status = db.Column(db.String(20), default='confirmed')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

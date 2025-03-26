@@ -198,7 +198,8 @@ def create_booking():
         end_time=datetime.fromisoformat(data['end_time']),
         user_id=current_user.id,
         aircraft_id=data.get('aircraft_id'),
-        instructor_id=data.get('instructor_id')
+        instructor_id=data.get('instructor_id'),
+        status='confirmed'  # Explicitly set status to confirmed
     )
     
     db.session.add(booking)
@@ -481,8 +482,8 @@ def update_booking(id):
     if booking.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Only allow editing of pending or confirmed bookings
-    if booking.status not in ['pending', 'confirmed']:
+    # Only allow editing of non-cancelled bookings
+    if booking.status == 'cancelled':
         return jsonify({'error': 'Cannot edit this booking'}), 400
     
     data = request.get_json()
@@ -674,8 +675,8 @@ def cancel_booking(id):
     if booking.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Only allow cancellation of pending or confirmed bookings
-    if booking.status not in ['pending', 'confirmed']:
+    # Only allow cancellation of non-cancelled bookings
+    if booking.status == 'cancelled':
         return jsonify({'error': 'Cannot cancel this booking'}), 400
     
     booking.status = 'cancelled'
