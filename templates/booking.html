@@ -555,6 +555,59 @@ function bookNow() {
     modal.show();
 }
 
+function displayBookings() {
+    const tableBody = document.querySelector('#bookingsTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = bookings.map(booking => {
+        const startTime = new Date(booking.start_time);
+        const endTime = new Date(booking.end_time);
+        
+        // Format date and time
+        const date = startTime.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        const timeRange = `${startTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        })} - ${endTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        })}`;
+
+        // Status badge styling
+        const statusClass = {
+            'pending': 'bg-warning',
+            'confirmed': 'bg-success',
+            'cancelled': 'bg-danger'
+        }[booking.status] || 'bg-secondary';
+
+        return `
+            <tr>
+                <td>${date}</td>
+                <td>${timeRange}</td>
+                <td>${booking.aircraft || ''}</td>
+                <td>${booking.instructor || ''}</td>
+                <td><span class="badge ${statusClass}">${booking.status}</span></td>
+                <td>
+                    ${booking.status !== 'cancelled' ? `
+                        <button class="btn btn-link btn-sm p-0 me-2" onclick="editBooking(${booking.id})" title="Edit booking">
+                            <i class="bi bi-pencil text-primary"></i>
+                        </button>
+                        <button class="btn btn-link btn-sm p-0" onclick="confirmDelete(${booking.id})" title="Cancel booking">
+                            <i class="bi bi-trash text-danger"></i>
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function initializeCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
@@ -567,11 +620,44 @@ function initializeCalendar() {
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
         events: bookings.map(booking => ({
+            id: booking.id,
             title: `${booking.aircraft} - ${booking.instructor}`,
             start: booking.start_time,
             end: booking.end_time,
-            backgroundColor: booking.status === 'cancelled' ? '#dc3545' : '#0d6efd'
-        }))
+            backgroundColor: {
+                'pending': '#ffc107',
+                'confirmed': '#198754',
+                'cancelled': '#dc3545'
+            }[booking.status] || '#6c757d',
+            borderColor: {
+                'pending': '#ffc107',
+                'confirmed': '#198754',
+                'cancelled': '#dc3545'
+            }[booking.status] || '#6c757d',
+            textColor: booking.status === 'pending' ? '#000' : '#fff'
+        })),
+        eventClick: function(info) {
+            const booking = bookings.find(b => b.id === parseInt(info.event.id));
+            if (booking && booking.status !== 'cancelled') {
+                editBooking(booking.id);
+            }
+        },
+        eventDidMount: function(info) {
+            // Add tooltips to calendar events
+            const booking = bookings.find(b => b.id === parseInt(info.event.id));
+            if (booking) {
+                const startTime = new Date(booking.start_time);
+                const endTime = new Date(booking.end_time);
+                const tooltip = `
+                    ${booking.aircraft}
+                    ${booking.instructor}
+                    ${startTime.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})} - 
+                    ${endTime.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}
+                    Status: ${booking.status}
+                `;
+                info.el.title = tooltip;
+            }
+        }
     });
     calendar.render();
 }
