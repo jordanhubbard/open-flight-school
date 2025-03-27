@@ -522,7 +522,9 @@ def delete_booking(id):
 def booking_page():
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard'))
-    return render_template('booking.html')
+    # Get user's bookings
+    user_bookings = Booking.query.filter_by(user_id=current_user.id).all()
+    return render_template('booking.html', user_bookings=user_bookings)
 
 @app.route('/bookings')
 @login_required

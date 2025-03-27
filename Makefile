@@ -1,38 +1,62 @@
-.PHONY: setup init run test clean db-reset clean-db
+.PHONY: build up down logs test clean db-reset init test-data
 
-setup:
-	python3.11 -m venv venv
-	. venv/bin/activate && pip install --upgrade pip
-	. venv/bin/activate && pip install -r requirements.txt
+# Build the containers
+build:
+	docker compose build
 
-init: db-reset
-	. venv/bin/activate && flask db upgrade
+# Start the application
+up:
+	docker compose up -d
 
-run:
-	. venv/bin/activate && FLASK_ENV=development FLASK_DEBUG=1 python -m flask run
+# Stop the application
+down:
+	docker compose down
 
+# View logs
+logs:
+	docker compose logs -f
+
+# Run tests
 test:
-	. venv/bin/activate && python -m pytest
+	docker compose run --rm web python -m pytest
 
-test-data: setup
-	. venv/bin/activate && python load_test_data.py
-
+# Clean up containers, volumes, and images
 clean:
-	rm -rf venv
-	rm -rf __pycache__
-	rm -rf .pytest_cache
-	rm -rf instance
-	rm -rf migrations
+	docker compose down -v
+	docker compose rm -f
+	docker system prune -f
 
+# Reset the database (drop and recreate)
 db-reset:
-	psql -U postgres -h localhost -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'flight_school' AND pid <> pg_backend_pid();"
-	psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS flight_school;"
-	psql -U postgres -h localhost -c "CREATE DATABASE flight_school;"
-	psql -U postgres -h localhost -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" 
+	docker compose down -v
+	docker compose up -d db
+	sleep 5  # Wait for database to be ready
+	docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
+	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;"
+	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
-clean-db: db-reset
-	rm -rf migrations
-	${MAKE} setup
-	. venv/bin/activate && flask db init
-	. venv/bin/activate && flask db migrate -m "Initial migration"
-	. venv/bin/activate && flask db upgrade
+# Initialize the database with migrations
+init: db-reset
+	docker compose run --rm migrations
+
+# Load test data
+test-data:
+	docker compose run --rm load-test-data
+
+# Development workflow: build, init, and start
+dev: build init test-data up
+
+# Production workflow: build and start
+prod: build up
+
+# Show container status
+status:
+	docker compose ps
+
+# Rebuild and restart a specific service
+restart:
+	docker compose restart $(service)
+
+# View logs for a specific service
+service-logs:
+	docker compose logs -f $(service)
