@@ -63,7 +63,18 @@ dev: build init up
 dev-with-test-data: build init test-data up
 
 # Production workflow: build and start
-prod: build up
+prod: build
+	docker compose up -d db
+	sleep 5  # Wait for database to be ready
+	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;" || true
+	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" || true
+	docker compose run --rm web flask db init || true
+	docker compose run --rm web flask db migrate -m "Initial migration"
+	docker compose run --rm web flask db upgrade
+	docker compose up -d
+
+# Production workflow with test data
+prod-with-test-data: prod test-data
 
 # Show container status
 status:
