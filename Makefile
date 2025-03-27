@@ -25,6 +25,7 @@ clean:
 	docker compose down -v
 	docker compose rm -f
 	docker system prune -f
+	${RM} -r venv
 
 # Reset the database (drop and recreate)
 db-reset:
@@ -41,10 +42,13 @@ init: db-reset
 
 # Load test data
 test-data:
-	docker compose run --rm load-test-data
+	docker compose run --rm web python load_test_data.py
 
-# Development workflow: build, init, and start
-dev: build init test-data up
+# Development workflow: build, init, and start (without test data)
+dev: build init up
+
+# Development workflow with test data
+dev-with-test-data: build init test-data up
 
 # Production workflow: build and start
 prod: build up

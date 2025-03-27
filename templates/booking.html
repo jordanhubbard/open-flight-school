@@ -581,38 +581,52 @@ function bookNow() {
         return;
     }
 
-    // Create local datetime objects by combining the date with the times
-    const [startHours, startMinutes] = startTimeInput.value.split(':');
-    const [endHours, endMinutes] = endTimeInput.value.split(':');
+    // Parse the date and time inputs
+    const [startHours, startMinutes] = startTimeInput.value.split(':').map(Number);
+    const [endHours, endMinutes] = endTimeInput.value.split(':').map(Number);
     
+    // Create Date objects for start and end times
     const startDateTime = new Date(dateInput.value);
-    startDateTime.setHours(parseInt(startHours), parseInt(startMinutes), 0);
+    startDateTime.setHours(startHours, startMinutes, 0, 0);
     
     const endDateTime = new Date(dateInput.value);
-    endDateTime.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+    endDateTime.setHours(endHours, endMinutes, 0, 0);
     
-    // If end time is before start time, it means the booking goes into the next day
+    // If end time is before start time, assume it's the next day
     if (endDateTime < startDateTime) {
         endDateTime.setDate(endDateTime.getDate() + 1);
     }
+
+    // Format for display in the modal
+    const modalStartTime = document.getElementById('startTime');
+    const modalEndTime = document.getElementById('endTime');
     
-    // Set the values in the booking modal
-    const startTimeField = document.getElementById('startTime');
-    const endTimeField = document.getElementById('endTime');
+    modalStartTime.value = startDateTime.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
     
-    // Format datetime-local inputs
-    startTimeField.value = startDateTime.toISOString().slice(0, 16);
-    endTimeField.value = endDateTime.toISOString().slice(0, 16);
+    modalEndTime.value = endDateTime.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
     
     // Set selected aircraft and instructor
     const selectedAircraftObj = aircraft.find(a => a.id === selectedAircraft);
     const selectedInstructorObj = instructors.find(i => i.id === selectedInstructor);
     
-    // Set the display text
-    const selectedAircraftText = document.getElementById('selectedAircraftText');
-    const selectedInstructorText = document.getElementById('selectedInstructorText');
-    selectedAircraftText.textContent = `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
-    selectedInstructorText.textContent = selectedInstructorObj.name;
+    document.getElementById('selectedAircraftText').textContent = 
+        `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
+    document.getElementById('selectedInstructorText').textContent = 
+        selectedInstructorObj.name;
     
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
@@ -675,55 +689,53 @@ function displayBookings() {
 }
 
 function initializeCalendar() {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl) return;
-
-    const calendar = new FullCalendar.Calendar(calendarEl, {
+    const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
         initialView: 'timeGridWeek',
         headerToolbar: {
-            left: 'prev,next today',
+            left: 'timeGridWeek,timeGridDay,dayGridMonth',
             center: 'title',
-            right: 'timeGridWeek,timeGridDay,dayGridMonth'
-        },
-        events: bookings.map(booking => ({
-            id: booking.id,
-            title: `${booking.aircraft} - ${booking.instructor}`,
-            start: new Date(booking.start_time),  // Convert to local Date object
-            end: new Date(booking.end_time),      // Convert to local Date object
-            backgroundColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
-            borderColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
-            textColor: '#fff'
-        })),
-        eventClick: function(info) {
-            const booking = bookings.find(b => b.id === parseInt(info.event.id));
-            if (booking && booking.status !== 'cancelled') {
-                editBooking(booking.id);
-            }
-        },
-        eventDidMount: function(info) {
-            // Add tooltips to calendar events
-            const booking = bookings.find(b => b.id === parseInt(info.event.id));
-            if (booking) {
-                const startTime = new Date(booking.start_time);
-                const endTime = new Date(booking.end_time);
-                const tooltip = `
-                    ${booking.aircraft}
-                    ${booking.instructor}
-                    ${startTime.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})} - 
-                    ${endTime.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}
-                    Status: ${booking.status}
-                `;
-                info.el.title = tooltip;
-            }
+            right: 'prev,next today'
         },
         slotMinTime: '06:00:00',
         slotMaxTime: '22:00:00',
         allDaySlot: false,
         nowIndicator: true,
         scrollTime: '08:00:00',
-        timeZone: 'local'  // Explicitly set to local timezone
+        timeZone: 'local',
+        events: function(info, successCallback, failureCallback) {
+            fetch('/api/bookings')
+                .then(response => response.json())
+                .then(data => {
+                    const events = data.map(booking => ({
+                        title: `${booking.aircraft} - ${booking.instructor}`,
+                        start: new Date(booking.start_time),
+                        end: new Date(booking.end_time),
+                        color: booking.status === 'confirmed' ? '#28a745' : '#dc3545'
+                    }));
+                    successCallback(events);
+                })
+                .catch(error => {
+                    console.error('Error fetching bookings:', error);
+                    failureCallback(error);
+                });
+        }
     });
     calendar.render();
+}
+
+function formatDateTimeForInput(date) {
+    // Format date as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatTimeForInput(date) {
+    // Format time as HH:mm in 24-hour format
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
 }
 
 function populateSelects() {
@@ -799,49 +811,46 @@ function editBooking(id) {
     new bootstrap.Modal(document.getElementById('editBookingModal')).show();
 }
 
-async function saveBooking() {
-    // Get the datetime values
+function saveBooking() {
     const startTime = document.getElementById('startTime').value;
     const endTime = document.getElementById('endTime').value;
-    const aircraftId = selectedAircraft;
-    const instructorId = selectedInstructor;
     
-    // Create local datetime objects
+    // Convert display format back to ISO format for API
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
     
-    const data = {
+    const booking = {
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
-        aircraft_id: aircraftId,
-        instructor_id: instructorId
+        aircraft_id: selectedAircraft,
+        instructor_id: selectedInstructor
     };
     
-    try {
-        const response = await fetch('/api/bookings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const responseData = await response.json();
-        
-        if (response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-            await loadData();  // Reload all data
-            showSuccess('Booking created successfully');
-            selectedAircraft = null;
-            selectedInstructor = null;
-            await checkAvailabilityAndBook(false);  // Refresh availability
-        } else {
-            showError(responseData.error || 'Failed to create booking');
+    fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(booking)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'Failed to create booking'); });
         }
-    } catch (error) {
-        console.error('Error creating booking:', error);
-        showError('Failed to create booking');
-    }
+        return response.json();
+    })
+    .then(data => {
+        showSuccess('Booking created successfully!');
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
+        modal.hide();
+        // Refresh the bookings list and availability
+        getBookings();
+        checkAvailability();
+    })
+    .catch(error => {
+        showError(error.message);
+    });
 }
 
 async function loadData() {

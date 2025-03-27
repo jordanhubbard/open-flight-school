@@ -54,18 +54,6 @@ services:
     networks:
       - app-network
 
-  load-test-data:
-    build: .
-    command: python load_test_data.py
-    environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/flight_school
-      - FLASK_APP=app.py
-    depends_on:
-      migrations:
-        condition: service_completed_successfully
-    networks:
-      - app-network
-
 volumes:
   postgres_data:
 

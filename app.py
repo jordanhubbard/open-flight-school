@@ -172,8 +172,8 @@ def get_bookings():
     bookings = Booking.query.filter_by(user_id=current_user.id).all()
     return jsonify([{
         'id': b.id,
-        'start_time': b.start_time.isoformat(),  # This will include timezone info
-        'end_time': b.end_time.isoformat(),      # This will include timezone info
+        'start_time': b.start_time.isoformat(),  # Return in ISO format
+        'end_time': b.end_time.isoformat(),      # Return in ISO format
         'aircraft': b.aircraft.make_model if b.aircraft else None,
         'instructor': b.instructor.name if b.instructor else None,
         'aircraft_id': b.aircraft_id,
@@ -188,14 +188,21 @@ def create_booking():
     logger.info(f"Creating booking with data: {data}")
     
     try:
-        # Parse datetime strings and convert to local time
+        # Parse datetime strings from ISO format
         start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
         end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+        
+        # Validate booking duration
+        duration = end_time - start_time
+        if duration.total_seconds() < 0:
+            return jsonify({'error': 'End time must be after start time'}), 400
+        if duration.total_seconds() > 8 * 3600:  # 8 hours max
+            return jsonify({'error': 'Booking duration cannot exceed 8 hours'}), 400
         
         # Check for conflicts with non-cancelled bookings
         conflicts = Booking.query.filter(
             Booking.status != 'cancelled',
-            ((Booking.aircraft_id == data['aircraft_id']) | (Booking.instructor_id == data['instructor_id'])) &
+            ((Booking.aircraft_id == data['aircraft_id']) | (Booking.instructor_id == data['instructor_id'])),
             ((Booking.start_time <= end_time) & (Booking.end_time >= start_time))
         ).first()
         
@@ -216,7 +223,17 @@ def create_booking():
         db.session.commit()
         logger.info(f"Successfully created booking {booking.id}")
         
-        return jsonify({'message': 'Booking created successfully'}), 201
+        return jsonify({
+            'message': 'Booking created successfully',
+            'booking': {
+                'id': booking.id,
+                'start_time': booking.start_time.isoformat(),
+                'end_time': booking.end_time.isoformat(),
+                'aircraft': booking.aircraft.make_model,
+                'instructor': booking.instructor.name,
+                'status': booking.status
+            }
+        }), 201
         
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
@@ -581,9 +598,13 @@ def get_calendar_bookings():
 def check_availability():
     data = request.get_json()
     
-    # Parse datetime strings and convert to local time
+    # Parse datetime strings from ISO format
     start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
     end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+    
+    # Validate time range
+    if end_time <= start_time:
+        return jsonify({'error': 'End time must be after start time'}), 400
     
     # Get all non-cancelled bookings that overlap with the requested time slot
     overlapping_bookings = Booking.query.filter(
