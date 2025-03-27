@@ -35,9 +35,14 @@ db-reset:
 	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;"
 	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
+# Initialize migrations
+init-migrations:
+	docker compose run --rm web flask db init
+	docker compose run --rm web flask db migrate -m "Initial migration"
+	docker compose run --rm web flask db upgrade
+
 # Initialize the database with migrations
-init: db-reset
-	docker compose run --rm migrations
+init: db-reset init-migrations
 
 # Load test data
 test-data:
