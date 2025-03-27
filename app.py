@@ -9,7 +9,8 @@ import logging
 import sys
 import bcrypt
 from functools import wraps
-from database import User, Aircraft, Instructor, Booking, init_db
+from database import User, Aircraft, Instructor, Booking, init_db, get_db
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +27,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
+app.config['TESTING'] = os.getenv('TESTING', 'False').lower() == 'true'
 
 # Database configuration
 database_url = os.getenv('DATABASE_URL', 'sqlite:///instance/flight_school.db')
@@ -207,44 +209,29 @@ def get_bookings():
 @login_required
 def create_booking():
     data = request.get_json()
-    logger.info(f"Creating booking with data: {data}")
-    
-    try:
-        # Parse datetime strings from ISO format
-        start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
-        end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
-        
-        # Validate booking duration
-        duration = end_time - start_time
-        if duration.total_seconds() < 0:
-            return jsonify({'error': 'End time must be after start time'}), 400
-        if duration.total_seconds() > 8 * 3600:  # 8 hours max
-            return jsonify({'error': 'Booking duration cannot exceed 8 hours'}), 400
-        
-        # Check for conflicts
-        if Booking.check_conflicts(start_time, end_time, data['aircraft_id'], data['instructor_id']):
-            return jsonify({'error': 'Time slot is not available'}), 400
-        
-        booking_id = Booking.create(
-            start_time=start_time,
-            end_time=end_time,
-            user_id=current_user.id,
-            aircraft_id=data['aircraft_id'],
-            instructor_id=data['instructor_id']
-        )
-        
-        # Get the created booking
-        booking = Booking.get_by_id(booking_id)
-        logger.info(f"Successfully created booking {booking_id}")
-        
-        return jsonify({
-            'message': 'Booking created successfully',
-            'booking': booking
-        }), 201
-        
-    except Exception as e:
-        logger.error(f"Error creating booking: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+    start_time = datetime.fromisoformat(data['start_time'])
+    end_time = datetime.fromisoformat(data['end_time'])
+    aircraft_id = data['aircraft_id']
+    instructor_id = data['instructor_id']
+
+    # Validate booking duration
+    duration = (end_time - start_time).total_seconds() / 3600
+    if duration < 1 or duration > 4:
+        return jsonify({'error': 'Booking duration must be between 1 and 4 hours'}), 400
+
+    # Check for conflicts
+    if not Booking.check_availability(start_time, end_time, aircraft_id, instructor_id):
+        return jsonify({'error': 'Selected time slot is not available'}), 400
+
+    booking = Booking.create(
+        user_id=current_user.id,
+        aircraft_id=aircraft_id,
+        instructor_id=instructor_id,
+        start_time=start_time,
+        end_time=end_time,
+        status='pending'
+    )
+    return jsonify(booking)
 
 def send_confirmation_email(booking):
     if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
@@ -566,73 +553,52 @@ def bookings_redirect():
         return redirect(url_for('admin_dashboard'))
     return redirect(url_for('booking_page'))
 
-@app.route('/api/available-aircraft', methods=['GET'])
+@app.route('/api/aircraft/available', methods=['GET'])
 @login_required
 def get_available_aircraft():
-    start_time = request.args.get('start_time')
-    end_time = request.args.get('end_time')
+    start_time = datetime.fromisoformat(request.args.get('start_time'))
+    end_time = datetime.fromisoformat(request.args.get('end_time'))
     
-    # Get all aircraft
     aircraft = Aircraft.get_all()
+    available_aircraft = []
     
-    # If no time range specified, return all aircraft
-    if not start_time or not end_time:
-        return jsonify(aircraft)
-    
-    # Parse datetime strings
-    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-    
-    # Check availability for each aircraft
     for a in aircraft:
-        a['available'] = not Booking.check_conflicts(start_time, end_time, aircraft_id=a['id'])
+        if Booking.check_availability(start_time, end_time, a['id']):
+            available_aircraft.append(a)
     
-    return jsonify(aircraft)
+    return jsonify(available_aircraft)
 
-@app.route('/api/available-instructors', methods=['GET'])
+@app.route('/api/instructors/available', methods=['GET'])
 @login_required
 def get_available_instructors():
-    start_time = request.args.get('start_time')
-    end_time = request.args.get('end_time')
+    start_time = datetime.fromisoformat(request.args.get('start_time'))
+    end_time = datetime.fromisoformat(request.args.get('end_time'))
     
-    # Get all instructors
     instructors = Instructor.get_all()
+    available_instructors = []
     
-    # If no time range specified, return all instructors
-    if not start_time or not end_time:
-        return jsonify(instructors)
-    
-    # Parse datetime strings
-    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-    
-    # Check availability for each instructor
     for i in instructors:
-        i['available'] = not Booking.check_conflicts(start_time, end_time, instructor_id=i['id'])
+        if Booking.check_availability(start_time, end_time, instructor_id=i['id']):
+            available_instructors.append(i)
     
-    return jsonify(instructors)
+    return jsonify(available_instructors)
 
-@app.route('/api/bookings/calendar', methods=['GET'])
+@app.route('/api/calendar/bookings', methods=['GET'])
 @login_required
 def get_calendar_bookings():
-    # Get all bookings for the next 30 days
-    start_date = datetime.utcnow()
+    start_date = datetime.now()
     end_date = start_date + timedelta(days=30)
     
     bookings = Booking.get_by_date_range(start_date, end_date)
-    
-    # Format bookings for FullCalendar
     events = []
+    
     for booking in bookings:
-        aircraft_name = booking.get('aircraft_name', 'No Aircraft')
-        instructor_name = booking.get('instructor_name', 'No Instructor')
-        
         events.append({
             'id': booking['id'],
-            'title': f"{aircraft_name} - {instructor_name}",
+            'title': f"{booking['aircraft_make_model']} - {booking['instructor_name']}",
             'start': booking['start_time'],
             'end': booking['end_time'],
-            'status': booking['status']
+            'backgroundColor': '#007bff' if booking['status'] == 'confirmed' else '#ffc107'
         })
     
     return jsonify(events)
@@ -641,31 +607,13 @@ def get_calendar_bookings():
 @login_required
 def check_availability():
     data = request.get_json()
+    start_time = datetime.fromisoformat(data['start_time'])
+    end_time = datetime.fromisoformat(data['end_time'])
+    aircraft_id = data.get('aircraft_id')
+    instructor_id = data.get('instructor_id')
     
-    try:
-        # Parse datetime strings
-        start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
-        end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
-        
-        # Check aircraft availability
-        aircraft_available = not Booking.check_conflicts(
-            start_time, end_time, aircraft_id=data['aircraft_id']
-        ) if data.get('aircraft_id') else True
-        
-        # Check instructor availability
-        instructor_available = not Booking.check_conflicts(
-            start_time, end_time, instructor_id=data['instructor_id']
-        ) if data.get('instructor_id') else True
-        
-        return jsonify({
-            'available': aircraft_available and instructor_available,
-            'aircraft_available': aircraft_available,
-            'instructor_available': instructor_available
-        })
-        
-    except Exception as e:
-        logger.error(f"Error checking availability: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+    is_available = Booking.check_availability(start_time, end_time, aircraft_id, instructor_id)
+    return jsonify({'available': is_available})
 
 @app.route('/account')
 @login_required
