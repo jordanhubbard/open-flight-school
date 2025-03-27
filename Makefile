@@ -118,19 +118,19 @@ local-init:
 		echo "BASE_URL=http://localhost:5001" >> .env; \
 	fi
 	. venv/bin/activate && \
-	export $$(cat .env | xargs) && \
+	set -a && source .env && set +a && \
 	flask db init && \
 	flask db migrate -m "Initial migration" && \
 	flask db upgrade
 
 # Load test data locally
 local-test-data:
-	. venv/bin/activate && export $$(cat .env | xargs) && python load_test_data.py
+	. venv/bin/activate && set -a && source .env && set +a && python load_test_data.py
 
 # Setup and run local development environment
 local-dev: local-clean local-venv local-init local-test-data
 	@echo "\nStarting Flask development server..."
-	. venv/bin/activate && export $$(cat .env | xargs) && flask run --port 5001
+	. venv/bin/activate && set -a && source .env && set +a && flask run --port 5001
 
 # Run tests locally
 local-test:
