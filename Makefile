@@ -1,117 +1,117 @@
 # Ensure POSIX compatibility
 SHELL := /bin/sh
 
-.PHONY: build up down logs test clean db-reset init test-data local-clean local-dev local-init local-test-data
+.PHONY: clean venv init test-data dev test setup reset-db lint format check coverage docs serve-docs migrate env help
 
-# Docker commands
-build:
-	docker compose build
-
-# Start the application
-up:
-	docker compose up -d
-
-# Stop the application
-down:
-	docker compose down
-
-# View logs
-logs:
-	docker compose logs -f
-
-# Run tests
-test:
-	docker compose run --rm web python -m pytest
-
-# Clean up containers and volumes
+# Clean up development files
 clean:
-	docker compose down -v
-	rm -rf instance/*.db
-
-# Reset the database (drop and recreate)
-db-reset:
-	docker compose down -v
-	rm -rf instance/*.db
-	docker compose up -d
-	flask db upgrade
-	flask seed-db
-
-# Initialize the database with migrations
-init:
-	docker compose up -d
-	flask db upgrade
-
-# Load test data
-test-data:
-	flask seed-db
-
-# Development workflow: build, init, and start (without test data)
-dev: build init up
-
-# Development workflow with test data
-dev-with-test-data: build init test-data up
-
-# Production workflow: build and start
-prod: build
-	docker compose up -d db
-	sleep 5  # Wait for database to be ready
-	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;" || true
-	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" || true
-	docker compose run --rm web flask db init || true
-	docker compose run --rm web flask db migrate -m "Initial migration"
-	docker compose run --rm web flask db upgrade
-	docker compose up -d
-
-# Production workflow with test data
-prod-with-test-data: prod test-data
-
-# Show container status
-status:
-	docker compose ps
-
-# Rebuild and restart a specific service
-restart:
-	docker compose restart $(service)
-
-# View logs for a specific service
-service-logs:
-	docker compose logs -f $(service)
-
-# Clean local development files
-local-clean:
 	rm -rf venv
 	rm -rf instance
 	rm -rf __pycache__
 	rm -rf .pytest_cache
 	rm -rf .coverage
 	rm -rf htmlcov
+	rm -rf docs/_build
+	rm -f *.pyc */*.pyc */*/*.pyc
 
-# Initialize local virtual environment
-local-venv:
+# Create and set up virtual environment
+venv:
 	python -m venv venv
 	. venv/bin/activate && pip install -r requirements.txt
 
-# Initialize local database
-local-init:
+# Initialize the database
+init:
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
 	flask db upgrade
 
-# Load test data locally
-local-test-data:
+# Load test data
+test-data:
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
 	flask seed-db
 
-# Setup and run local development environment
-local-dev:
+# Run the application
+dev:
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
 	flask run --port=5001
 
-# Run tests locally
-local-test:
-	{ \
-		. ./venv/bin/activate; \
-		python -m pytest; \
-	}
+# Run tests
+test:
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	python -m pytest
+
+# Run linting
+lint:
+	. venv/bin/activate && \
+	flake8 . && \
+	black . --check
+
+# Format code
+format:
+	. venv/bin/activate && \
+	black .
+
+# Run all checks (lint, format, test)
+check: lint format test
+
+# Generate coverage report
+coverage:
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	python -m pytest --cov=app --cov-report=html
+
+# Build documentation
+docs:
+	. venv/bin/activate && \
+	cd docs && make html
+
+# Serve documentation locally
+serve-docs:
+	. venv/bin/activate && \
+	python -m http.server 8000 -d docs/_build/html
+
+# Full development setup
+setup: clean venv init test-data
+
+# Reset database and reload test data
+reset-db:
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	rm -f instance/*.db && \
+	flask db upgrade && \
+	flask seed-db
+
+# Create new migration
+migrate:
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	flask db migrate -m "$(message)"
+
+# Create new .env file from template
+env:
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env file from template. Please update the values."; \
+	else \
+		echo ".env file already exists."; \
+	fi
+
+# Show help
+help:
+	@echo "Available targets:"
+	@echo "  setup      - Full development setup (clean, venv, init, test-data)"
+	@echo "  dev        - Run the application"
+	@echo "  test       - Run tests"
+	@echo "  lint       - Run linting checks"
+	@echo "  format     - Format code"
+	@echo "  check      - Run all checks (lint, format, test)"
+	@echo "  coverage   - Generate coverage report"
+	@echo "  docs       - Build documentation"
+	@echo "  serve-docs - Serve documentation locally"
+	@echo "  reset-db   - Reset database and reload test data"
+	@echo "  migrate    - Create new migration (use: make migrate message='migration message')"
+	@echo "  env        - Create .env file from template"
+	@echo "  clean      - Clean up development files"

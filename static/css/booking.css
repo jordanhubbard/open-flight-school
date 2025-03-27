@@ -1,0 +1,99 @@
+.selected-row {
+    background-color: #e8f0fe !important;  /* Light blue background */
+    border-left: 3px solid #1a73e8;  /* Blue accent border */
+}
+
+/* Override bootstrap striped table for selected rows */
+.table-striped tbody tr.selected-row:nth-of-type(odd),
+.table-striped tbody tr.selected-row:nth-of-type(even) {
+    background-color: #e8f0fe !important;
+}
+
+/* Hover effect for selectable rows */
+.table-striped tbody tr:hover:not(.text-muted) {
+    background-color: #f5f9ff;
+    cursor: pointer;
+}
+
+/* Keep the selected state visible even on hover */
+.table-striped tbody tr.selected-row:hover {
+    background-color: #e8f0fe !important;
+}
+
+tr:hover {
+    background-color: rgba(227, 242, 253, 0.5);
+}
+
+.table-container {
+    position: relative;
+    height: 400px;
+    padding-right: 40px; /* Make room for navigation buttons */
+}
+
+.table-scroll {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.table-scroll::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.table-nav-buttons {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 3;
+}
+
+.nav-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.nav-button:hover:not(:disabled) {
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.nav-button i {
+    font-size: 1.2rem;
+    color: #0d6efd;
+}
+
+.nav-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nav-button:disabled i {
+    color: #6c757d;
+}
+
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #fff;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+} 
