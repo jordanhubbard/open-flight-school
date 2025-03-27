@@ -54,7 +54,7 @@ init: check-venv check-env
 	@echo "Initializing database..."
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
-	python init_db.py
+	python -c "from database import init_db; init_db()"
 	@echo "Database initialized"
 
 # Load test data
@@ -62,7 +62,7 @@ test-data: check-venv check-env
 	@echo "Loading test data..."
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
-	python load_test_data.py
+	python -c "from database import init_db; from load_test_data import load_test_data; init_db(); load_test_data()"
 	@echo "Test data loaded"
 
 # Run the application
@@ -70,7 +70,7 @@ dev: check-venv check-env
 	@echo "Starting development server..."
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
-	flask run --port=5001
+	flask run --host=0.0.0.0 --port=5001
 
 # Run tests
 test: check-venv
@@ -131,8 +131,7 @@ reset-db: check-venv check-env
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
 	rm -f instance/*.db && \
-	python init_db.py && \
-	python load_test_data.py
+	python -c "from database import init_db; from load_test_data import load_test_data; init_db(); load_test_data()"
 	@echo "Database reset and test data loaded"
 
 # Create new migration
