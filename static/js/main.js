@@ -948,18 +948,139 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Register form
+    // Register form with password validation
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
+        const registerPassword = document.getElementById('registerPassword');
+        const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+
+        // Add password strength check on input
+        if (registerPassword) {
+            registerPassword.addEventListener('input', function() {
+                const result = checkPasswordStrength(this.value);
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('form-text')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'form-text';
+                    this.parentNode.insertBefore(feedback, this.nextSibling);
+                }
+                
+                if (result.strength < 5) {
+                    feedback.className = 'form-text text-danger';
+                    feedback.textContent = `Password must include: ${result.requirements.join(', ')}`;
+                } else {
+                    feedback.className = 'form-text text-success';
+                    feedback.textContent = 'Password strength: Excellent';
+                }
+            });
+        }
+
         registerForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            const password = registerPassword.value;
+            const confirmPassword = registerPasswordConfirm.value;
+            
+            // Check password strength
+            const strengthResult = checkPasswordStrength(password);
+            if (strengthResult.strength < 5) {
+                showError(`Password is not strong enough. ${strengthResult.requirements.join(', ')}`);
+                return;
+            }
+            
+            // Check password match
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
             const userData = {
                 first_name: document.getElementById('registerFirstName').value,
                 last_name: document.getElementById('registerLastName').value,
                 email: document.getElementById('registerEmail').value,
-                password: document.getElementById('registerPassword').value
+                password: password
             };
             registerUser(userData);
         });
     }
+
+    // Password Reset form
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('resetEmail').value;
+            requestPasswordReset(email);
+        });
+    }
+
+    // New Password form with validation
+    const newPasswordForm = document.getElementById('newPasswordForm');
+    if (newPasswordForm) {
+        const newPassword = document.getElementById('newPassword');
+        const newPasswordConfirm = document.getElementById('newPasswordConfirm');
+
+        // Add password strength check on input
+        if (newPassword) {
+            newPassword.addEventListener('input', function() {
+                const result = checkPasswordStrength(this.value);
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('form-text')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'form-text';
+                    this.parentNode.insertBefore(feedback, this.nextSibling);
+                }
+                
+                if (result.strength < 5) {
+                    feedback.className = 'form-text text-danger';
+                    feedback.textContent = `Password must include: ${result.requirements.join(', ')}`;
+                } else {
+                    feedback.className = 'form-text text-success';
+                    feedback.textContent = 'Password strength: Excellent';
+                }
+            });
+        }
+
+        newPasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const password = newPassword.value;
+            const confirmPassword = newPasswordConfirm.value;
+            
+            // Check password strength
+            const strengthResult = checkPasswordStrength(password);
+            if (strengthResult.strength < 5) {
+                showError(`Password is not strong enough. ${strengthResult.requirements.join(', ')}`);
+                return;
+            }
+            
+            // Check password match
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
+            // Get token from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (!token) {
+                showError('Password reset token is missing');
+                return;
+            }
+
+            resetPassword(token, password);
+        });
+    }
+
+    // Initialize any Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize any Bootstrap popovers
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
 }); 
