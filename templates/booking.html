@@ -4,6 +4,34 @@
 <div class="container mt-4">
     <h2>Book a Flight</h2>
     
+    {% if user_bookings %}
+    <!-- My Bookings Section - Only shown if user has bookings -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">My Bookings</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>TIME</th>
+                            <th>AIRCRAFT</th>
+                            <th>INSTRUCTOR</th>
+                            <th>STATUS</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody">
+                        <!-- Bookings will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- Book Now Button and Time Selection - Top -->
     <div class="row mb-4 align-items-end">
         <div class="col-md-3">
@@ -107,32 +135,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- My Bookings Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">My Bookings</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>DATE</th>
-                            <th>TIME</th>
-                            <th>AIRCRAFT</th>
-                            <th>INSTRUCTOR</th>
-                            <th>STATUS</th>
-                            <th>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bookingsTableBody">
-                        <!-- Bookings will be loaded here -->
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
