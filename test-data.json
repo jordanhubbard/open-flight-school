@@ -12,135 +12,119 @@
             "last_name": "Doe",
             "email": "john@example.com",
             "password": "password123",
-            "is_admin": false
+            "address": "123 Main St",
+            "phone": "555-0101",
+            "credit_card": "4111111111111111"
         },
         {
             "first_name": "Jane",
             "last_name": "Smith",
             "email": "jane@example.com",
-            "password": "password123",
-            "is_admin": false
+            "password": "password456",
+            "address": "456 Oak Ave",
+            "phone": "555-0102",
+            "credit_card": "4111111111111112"
         },
         {
             "first_name": "Bob",
             "last_name": "Johnson",
             "email": "bob@example.com",
-            "password": "password123",
-            "is_admin": false
+            "password": "password789",
+            "address": "789 Pine Rd",
+            "phone": "555-0103",
+            "credit_card": "4111111111111113"
         }
     ],
     "aircraft": [
         {
-            "make_model": "Cessna 172 Skyhawk",
             "tail_number": "N12345",
-            "type": "Single Engine Piston"
+            "make_model": "Cessna 172",
+            "type": "Single Engine"
         },
         {
-            "make_model": "Piper PA-28 Cherokee",
-            "tail_number": "N23456",
-            "type": "Single Engine Piston"
-        },
-        {
-            "make_model": "Diamond DA40",
-            "tail_number": "N34567",
-            "type": "Single Engine Piston"
-        },
-        {
-            "make_model": "Cessna 152",
-            "tail_number": "N45678",
-            "type": "Single Engine Piston"
-        },
-        {
-            "make_model": "Piper PA-44 Seminole",
-            "tail_number": "N56789",
-            "type": "Multi Engine Piston"
-        },
-        {
-            "make_model": "Cirrus SR20",
             "tail_number": "N67890",
-            "type": "Single Engine Piston"
+            "make_model": "Piper PA-28",
+            "type": "Single Engine"
         },
         {
-            "make_model": "Cessna 182 Skylane",
-            "tail_number": "N78901",
-            "type": "Single Engine Piston"
+            "tail_number": "N11223",
+            "make_model": "Diamond DA40",
+            "type": "Single Engine"
         },
         {
-            "make_model": "Piper PA-28 Warrior",
-            "tail_number": "N89012",
-            "type": "Single Engine Piston"
+            "tail_number": "N44556",
+            "make_model": "Cirrus SR20",
+            "type": "Single Engine"
         },
         {
+            "tail_number": "N77889",
             "make_model": "Diamond DA42",
-            "tail_number": "N90123",
-            "type": "Multi Engine Piston"
+            "type": "Multi Engine"
         },
         {
-            "make_model": "Cessna 172RG Cutlass",
-            "tail_number": "N01234",
-            "type": "Single Engine Piston"
+            "tail_number": "N99001",
+            "make_model": "Beechcraft Baron",
+            "type": "Multi Engine"
+        },
+        {
+            "tail_number": "N22334",
+            "make_model": "Piper Seneca",
+            "type": "Multi Engine"
+        },
+        {
+            "tail_number": "N55667",
+            "make_model": "Cessna 310",
+            "type": "Multi Engine"
         }
     ],
     "instructors": [
         {
-            "name": "John Smith",
-            "email": "john.smith@flight-school.com",
-            "phone": "(555) 123-4567",
-            "ratings": ["CFI", "CFII", "MEI"]
-        },
-        {
-            "name": "Sarah Johnson",
-            "email": "sarah.johnson@flight-school.com",
-            "phone": "(555) 234-5678",
-            "ratings": ["CFI", "CFII"]
-        },
-        {
             "name": "Michael Brown",
-            "email": "michael.brown@flight-school.com",
-            "phone": "(555) 345-6789",
-            "ratings": ["CFI", "CFII", "MEI", "ATP"]
-        },
-        {
-            "name": "Emily Davis",
-            "email": "emily.davis@flight-school.com",
-            "phone": "(555) 456-7890",
-            "ratings": ["CFI", "CFII", "MEI"]
-        },
-        {
-            "name": "David Wilson",
-            "email": "david.wilson@flight-school.com",
-            "phone": "(555) 567-8901",
-            "ratings": ["CFI", "CFII", "MEI", "ATP"]
+            "email": "michael@example.com",
+            "phone": "555-0201",
+            "ratings": "CFI, CFII, MEI"
         },
         {
             "name": "Lisa Anderson",
-            "email": "lisa.anderson@flight-school.com",
-            "phone": "(555) 678-9012",
-            "ratings": ["CFI", "CFII"]
-        },
-        {
-            "name": "Robert Taylor",
-            "email": "robert.taylor@flight-school.com",
-            "phone": "(555) 789-0123",
-            "ratings": ["CFI", "CFII", "MEI"]
-        },
-        {
-            "name": "Jennifer White",
-            "email": "jennifer.white@flight-school.com",
-            "phone": "(555) 890-1234",
-            "ratings": ["CFI", "CFII", "MEI", "ATP"]
+            "email": "lisa@example.com",
+            "phone": "555-0202",
+            "ratings": "CFI, CFII"
         },
         {
             "name": "William Martinez",
-            "email": "william.martinez@flight-school.com",
-            "phone": "(555) 901-2345",
-            "ratings": ["CFI", "CFII"]
+            "email": "william@example.com",
+            "phone": "555-0203",
+            "ratings": "CFI, MEI"
         },
         {
-            "name": "Amanda Lee",
-            "email": "amanda.lee@flight-school.com",
-            "phone": "(555) 012-3456",
-            "ratings": ["CFI", "CFII", "MEI"]
+            "name": "Sarah Thompson",
+            "email": "sarah@example.com",
+            "phone": "555-0204",
+            "ratings": "CFI, CFII, MEI"
+        },
+        {
+            "name": "David Wilson",
+            "email": "david@example.com",
+            "phone": "555-0205",
+            "ratings": "CFI"
+        },
+        {
+            "name": "Emily Davis",
+            "email": "emily@example.com",
+            "phone": "555-0206",
+            "ratings": "CFI, CFII"
+        },
+        {
+            "name": "James Taylor",
+            "email": "james@example.com",
+            "phone": "555-0207",
+            "ratings": "CFI, MEI"
+        },
+        {
+            "name": "Jennifer White",
+            "email": "jennifer@example.com",
+            "phone": "555-0208",
+            "ratings": "CFI, CFII, MEI"
         }
     ],
     "bookings": [
@@ -158,7 +142,7 @@
             "instructor_id": 2,
             "start_time": "2025-03-27T13:00:00",
             "end_time": "2025-03-27T15:00:00",
-            "status": "pending"
+            "status": "confirmed"
         },
         {
             "user_id": 3,
@@ -190,7 +174,7 @@
             "instructor_id": 6,
             "start_time": "2025-03-31T13:00:00",
             "end_time": "2025-03-31T15:00:00",
-            "status": "pending"
+            "status": "confirmed"
         },
         {
             "user_id": 4,
@@ -206,22 +190,6 @@
             "instructor_id": 8,
             "start_time": "2025-04-02T14:00:00",
             "end_time": "2025-04-02T16:00:00",
-            "status": "confirmed"
-        },
-        {
-            "user_id": 3,
-            "aircraft_id": 9,
-            "instructor_id": 9,
-            "start_time": "2025-04-03T09:00:00",
-            "end_time": "2025-04-03T11:00:00",
-            "status": "pending"
-        },
-        {
-            "user_id": 4,
-            "aircraft_id": 10,
-            "instructor_id": 10,
-            "start_time": "2025-04-04T13:00:00",
-            "end_time": "2025-04-04T15:00:00",
             "status": "confirmed"
         }
     ]

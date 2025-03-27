@@ -231,7 +231,7 @@ function displayBookings(bookings) {
             <td>${booking.instructor}</td>
             <td>
                 <span class="badge ${booking.status === 'cancelled' ? 'bg-danger' : 'bg-success'}">
-                    ${booking.status}
+                    ${booking.status === 'cancelled' ? 'Cancelled' : 'Confirmed'}
                 </span>
             </td>
             <td>
