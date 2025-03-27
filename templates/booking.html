@@ -246,7 +246,25 @@
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 <style>
     .selected-row {
-        background-color: #e3f2fd !important;
+        background-color: #e8f0fe !important;  /* Light blue background */
+        border-left: 3px solid #1a73e8;  /* Blue accent border */
+    }
+    
+    /* Override bootstrap striped table for selected rows */
+    .table-striped tbody tr.selected-row:nth-of-type(odd),
+    .table-striped tbody tr.selected-row:nth-of-type(even) {
+        background-color: #e8f0fe !important;
+    }
+
+    /* Hover effect for selectable rows */
+    .table-striped tbody tr:hover:not(.text-muted) {
+        background-color: #f5f9ff;
+        cursor: pointer;
+    }
+
+    /* Keep the selected state visible even on hover */
+    .table-striped tbody tr.selected-row:hover {
+        background-color: #e8f0fe !important;
     }
     tr:hover {
         background-color: rgba(227, 242, 253, 0.5);
@@ -462,6 +480,16 @@ function displayAircraft() {
             <td>${a.type}</td>
         </tr>
     `).join('');
+
+    // Add click event listeners to the rows
+    tableBody.querySelectorAll('tr').forEach(row => {
+        if (!row.classList.contains('text-muted')) {
+            row.addEventListener('click', function() {
+                const id = parseInt(row.querySelector('input[type="radio"]').value);
+                selectAircraft(id, row);
+            });
+        }
+    });
 }
 
 function displayInstructors() {
@@ -483,18 +511,28 @@ function displayInstructors() {
             <td>${i.credentials || 'N/A'}</td>
         </tr>
     `).join('');
+
+    // Add click event listeners to the rows
+    tableBody.querySelectorAll('tr').forEach(row => {
+        if (!row.classList.contains('text-muted')) {
+            row.addEventListener('click', function() {
+                const id = parseInt(row.querySelector('input[type="radio"]').value);
+                selectInstructor(id, row);
+            });
+        }
+    });
 }
 
 function selectAircraft(id, row) {
-    // Remove selected class from all rows
-    const rows = document.querySelectorAll('#aircraftTableBody tr');
-    rows.forEach(r => r.classList.remove('selected-row'));
+    // Remove selection from all aircraft rows
+    document.querySelectorAll('#aircraftTableBody tr').forEach(tr => {
+        tr.classList.remove('selected-row');
+    });
     
-    // Add selected class to clicked row
-    if (row) {
-        row.classList.add('selected-row');
-    }
+    // Add selection to clicked row
+    row.classList.add('selected-row');
     
+    // Update the selected aircraft
     selectedAircraft = id;
     
     // Update radio button
@@ -505,15 +543,15 @@ function selectAircraft(id, row) {
 }
 
 function selectInstructor(id, row) {
-    // Remove selected class from all rows
-    const rows = document.querySelectorAll('#instructorsTableBody tr');
-    rows.forEach(r => r.classList.remove('selected-row'));
+    // Remove selection from all instructor rows
+    document.querySelectorAll('#instructorsTableBody tr').forEach(tr => {
+        tr.classList.remove('selected-row');
+    });
     
-    // Add selected class to clicked row
-    if (row) {
-        row.classList.add('selected-row');
-    }
+    // Add selection to clicked row
+    row.classList.add('selected-row');
     
+    // Update the selected instructor
     selectedInstructor = id;
     
     // Update radio button
