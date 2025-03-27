@@ -20,15 +20,23 @@ logs:
 test:
 	docker compose run --rm web python -m pytest
 
-# Clean up containers, volumes, and images
+# Clean up containers and volumes
 clean:
-	docker compose down -v
+	docker compose down -v --remove-orphans
 	docker compose rm -f
+	rm -rf __pycache__ */__pycache__ */*/__pycache__
+	rm -rf instance
+	rm -rf migrations
+	rm -f *.pyc */*.pyc */*/*.pyc
+	rm -f *.sqlite *.sqlite3 *.db
+
+# Deep clean - includes docker system prune
+deep-clean: clean
 	docker system prune -f
 
 # Reset the database (drop and recreate)
 db-reset:
-	docker compose down -v
+	docker compose down -v --remove-orphans
 	docker compose up -d db
 	sleep 5  # Wait for database to be ready
 	docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
