@@ -576,19 +576,31 @@ function bookNow() {
     const startTimeInput = document.getElementById('startTimeInput');
     const endTimeInput = document.getElementById('endTimeInput');
     
-    // Create local datetime objects
-    const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
-    const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
+    if (!dateInput.value || !startTimeInput.value || !endTimeInput.value) {
+        showError('Please select a date, start time, and duration');
+        return;
+    }
+
+    // Create local datetime objects by combining the date with the times
+    const [startHours, startMinutes] = startTimeInput.value.split(':');
+    const [endHours, endMinutes] = endTimeInput.value.split(':');
     
-    // Set the values in the booking modal (in local time)
+    const startDateTime = new Date(dateInput.value);
+    startDateTime.setHours(parseInt(startHours), parseInt(startMinutes), 0);
+    
+    const endDateTime = new Date(dateInput.value);
+    endDateTime.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+    
+    // If end time is before start time, it means the booking goes into the next day
+    if (endDateTime < startDateTime) {
+        endDateTime.setDate(endDateTime.getDate() + 1);
+    }
+    
+    // Set the values in the booking modal
     const startTimeField = document.getElementById('startTime');
     const endTimeField = document.getElementById('endTime');
-    const aircraftSelect = document.getElementById('aircraftSelect');
-    const instructorSelect = document.getElementById('instructorSelect');
-    const selectedAircraftText = document.getElementById('selectedAircraftText');
-    const selectedInstructorText = document.getElementById('selectedInstructorText');
     
-    // Format datetime-local inputs in local time
+    // Format datetime-local inputs
     startTimeField.value = startDateTime.toISOString().slice(0, 16);
     endTimeField.value = endDateTime.toISOString().slice(0, 16);
     
@@ -596,9 +608,9 @@ function bookNow() {
     const selectedAircraftObj = aircraft.find(a => a.id === selectedAircraft);
     const selectedInstructorObj = instructors.find(i => i.id === selectedInstructor);
     
-    // Set the select values and display text
-    aircraftSelect.value = selectedAircraft;
-    instructorSelect.value = selectedInstructor;
+    // Set the display text
+    const selectedAircraftText = document.getElementById('selectedAircraftText');
+    const selectedInstructorText = document.getElementById('selectedInstructorText');
     selectedAircraftText.textContent = `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
     selectedInstructorText.textContent = selectedInstructorObj.name;
     

@@ -1,85 +1,57 @@
 from app import app, db
 from models import User, Aircraft, Instructor, Booking
-from datetime import datetime, timedelta
+from datetime import datetime
+import json
 
 def init_db():
     with app.app_context():
         # Create all tables
         db.create_all()
         
-        # Create admin user if it doesn't exist
-        admin = User.query.filter_by(email='admin@eyesoutside.com').first()
-        if not admin:
-            admin = User(
-                first_name='Admin',
-                last_name='User',
-                email='admin@eyesoutside.com',
-                address='123 Admin St',
-                phone='555-0123',
-                is_admin=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
+        # Load test data from JSON file
+        with open('test-data.json', 'r') as f:
+            test_data = json.load(f)
         
-        # Create test aircraft if they don't exist
-        aircraft_data = [
-            {'tail_number': 'N12345', 'make_model': 'Cessna 172', 'type': 'Single Engine'},
-            {'tail_number': 'N67890', 'make_model': 'Piper Arrow', 'type': 'Complex'},
-            {'tail_number': 'N24680', 'make_model': 'Diamond DA40', 'type': 'Glass Cockpit'}
-        ]
+        # Create users
+        for user_data in test_data['users']:
+            user = User.query.filter_by(email=user_data['email']).first()
+            if not user:
+                user = User(
+                    first_name=user_data['first_name'],
+                    last_name=user_data['last_name'],
+                    email=user_data['email'],
+                    address=user_data.get('address'),
+                    phone=user_data.get('phone'),
+                    is_admin=user_data['is_admin']
+                )
+                user.set_password(user_data['password'])
+                db.session.add(user)
         
-        for aircraft_info in aircraft_data:
-            aircraft = Aircraft.query.filter_by(tail_number=aircraft_info['tail_number']).first()
+        # Create aircraft
+        for aircraft_data in test_data['aircraft']:
+            aircraft = Aircraft.query.filter_by(tail_number=aircraft_data['tail_number']).first()
             if not aircraft:
-                aircraft = Aircraft(**aircraft_info)
+                aircraft = Aircraft(**aircraft_data)
                 db.session.add(aircraft)
         
-        # Create test instructors if they don't exist
-        instructor_data = [
-            {
-                'name': 'John Smith',
-                'email': 'john@eyesoutside.com',
-                'phone': '555-0124',
-                'ratings': 'CFI, CFII, MEI'
-            },
-            {
-                'name': 'Sarah Johnson',
-                'email': 'sarah@eyesoutside.com',
-                'phone': '555-0125',
-                'ratings': 'CFI, CFII, AGI'
-            }
-        ]
-        
-        for instructor_info in instructor_data:
-            instructor = Instructor.query.filter_by(email=instructor_info['email']).first()
+        # Create instructors
+        for instructor_data in test_data['instructors']:
+            instructor = Instructor.query.filter_by(email=instructor_data['email']).first()
             if not instructor:
-                instructor = Instructor(**instructor_info)
+                instructor = Instructor(**instructor_data)
                 db.session.add(instructor)
         
-        # Create test bookings if they don't exist
-        if not Booking.query.first():
-            now = datetime.utcnow()
-            booking_data = [
-                {
-                    'start_time': now + timedelta(days=1, hours=9),
-                    'end_time': now + timedelta(days=1, hours=11),
-                    'user_id': 1,
-                    'aircraft_id': 1,
-                    'instructor_id': 1,
-                    'status': 'confirmed'
-                },
-                {
-                    'start_time': now + timedelta(days=2, hours=14),
-                    'end_time': now + timedelta(days=2, hours=16),
-                    'user_id': 1,
-                    'aircraft_id': 2,
-                    'instructor_id': 2,
-                    'status': 'confirmed'
-                }
-            ]
-            
-            for booking_info in booking_data:
-                booking = Booking(**booking_info)
+        # Create bookings
+        if not Booking.query.first():  # Only create bookings if none exist
+            for booking_data in test_data['bookings']:
+                booking = Booking(
+                    start_time=datetime.fromisoformat(booking_data['start_time']),
+                    end_time=datetime.fromisoformat(booking_data['end_time']),
+                    user_id=booking_data['user_id'],
+                    aircraft_id=booking_data['aircraft_id'],
+                    instructor_id=booking_data['instructor_id'],
+                    status=booking_data['status']
+                )
                 db.session.add(booking)
         
         # Commit all changes
