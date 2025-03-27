@@ -729,5 +729,15 @@ def my_bookings():
         return redirect(url_for('admin_dashboard'))
     return render_template('bookings.html')
 
+@app.route('/health')
+def health_check():
+    try:
+        # Try to query the database
+        User.query.first()
+        return jsonify({'status': 'healthy'}), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True) 
