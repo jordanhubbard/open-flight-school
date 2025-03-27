@@ -41,6 +41,8 @@ dev:
 test:
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
+	export FLASK_ENV=testing && \
+	export TESTING=1 && \
 	python -m pytest
 
 # Run linting
@@ -61,6 +63,8 @@ check: lint format test
 coverage:
 	. venv/bin/activate && \
 	export $$(cat .env | grep -v '^#' | xargs) && \
+	export FLASK_ENV=testing && \
+	export TESTING=1 && \
 	python -m pytest --cov=app --cov-report=html
 
 # Build documentation

@@ -1,15 +1,15 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app, session
 from flask_login import login_user, login_required, logout_user, current_user
-from flask_mail import Message
+from flask_mail import Message, Mail
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from extensions import db, login_manager, mail
-from models import User, Aircraft, Instructor, Booking
-from urllib.parse import urljoin
-from functools import wraps
+from flask_login import LoginManager
 import logging
 import sys
+import bcrypt
+from functools import wraps
+from database import User, Aircraft, Instructor, Booking, init_db
 
 # Configure logging
 logging.basicConfig(
@@ -60,17 +60,34 @@ else:
 app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5001')
 
 # Initialize extensions
-db.init_app(app)
+login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
-mail.init_app(app)
+mail = Mail(app)
+
+# Initialize database
+with app.app_context():
+    init_db()
 
 @login_manager.user_loader
 def load_user(user_id):
     logger.debug(f"Loading user with ID: {user_id}")
-    return User.query.get(int(user_id))
+    user_data = User.get_by_id(int(user_id))
+    if user_data:
+        # Create a UserMixin-compatible object
+        class UserObject:
+            def __init__(self, data):
+                self.id = data['id']
+                self.is_admin = data['is_admin']
+                self.is_authenticated = True
+                self.is_active = True
+                self.is_anonymous = False
+            def get_id(self):
+                return str(self.id)
+        return UserObject(user_data)
+    return None
 
 def check_session_timeout():
     if current_user.is_authenticated:
@@ -128,25 +145,22 @@ def register():
     data = request.get_json()
     logger.debug(f"Registration data: {data}")
     
-    if User.query.filter_by(email=data['email']).first():
+    if User.get_by_email(data['email']):
         logger.debug(f"Email {data['email']} already registered")
         return jsonify({'error': 'Email already registered'}), 400
     
     try:
-        user = User(
+        user_id = User.create(
             first_name=data['first_name'],
             last_name=data['last_name'],
             email=data['email'],
+            password_hash=bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
             is_admin=False
         )
-        user.set_password(data['password'])
-        db.session.add(user)
-        db.session.commit()
         logger.debug(f"User {data['email']} registered successfully")
         return jsonify({'message': 'Registration successful'}), 201
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
-        db.session.rollback()
         return jsonify({'error': 'Registration failed'}), 500
 
 @app.route('/api/login', methods=['POST'])
@@ -155,8 +169,20 @@ def login():
     data = request.get_json()
     logger.debug(f"Login attempt for email: {data['email']}")
     
-    user = User.query.filter_by(email=data['email']).first()
-    if user and user.check_password(data['password']):
+    user_data = User.get_by_email(data['email'])
+    if user_data and bcrypt.checkpw(data['password'].encode('utf-8'), user_data['password_hash'].encode('utf-8')):
+        # Create a UserMixin-compatible object
+        class UserObject:
+            def __init__(self, data):
+                self.id = data['id']
+                self.is_admin = data['is_admin']
+                self.is_authenticated = True
+                self.is_active = True
+                self.is_anonymous = False
+            def get_id(self):
+                return str(self.id)
+        
+        user = UserObject(user_data)
         # Set up secure session
         session.permanent = True
         login_user(user)
@@ -174,17 +200,8 @@ def login():
 @app.route('/api/bookings', methods=['GET'])
 @login_required
 def get_bookings():
-    bookings = Booking.query.filter_by(user_id=current_user.id).all()
-    return jsonify([{
-        'id': b.id,
-        'start_time': b.start_time.isoformat(),  # Return in ISO format
-        'end_time': b.end_time.isoformat(),      # Return in ISO format
-        'aircraft': b.aircraft.make_model if b.aircraft else None,
-        'instructor': b.instructor.name if b.instructor else None,
-        'aircraft_id': b.aircraft_id,
-        'instructor_id': b.instructor_id,
-        'status': b.status
-    } for b in bookings])
+    bookings = Booking.get_by_user(current_user.id)
+    return jsonify(bookings)
 
 @app.route('/api/bookings', methods=['POST'])
 @login_required
@@ -204,40 +221,25 @@ def create_booking():
         if duration.total_seconds() > 8 * 3600:  # 8 hours max
             return jsonify({'error': 'Booking duration cannot exceed 8 hours'}), 400
         
-        # Check for conflicts with non-cancelled bookings
-        conflicts = Booking.query.filter(
-            Booking.status != 'cancelled',
-            ((Booking.aircraft_id == data['aircraft_id']) | (Booking.instructor_id == data['instructor_id'])),
-            ((Booking.start_time <= end_time) & (Booking.end_time >= start_time))
-        ).first()
-        
-        if conflicts:
-            logger.info(f"Found conflicting booking: {conflicts.id}")
+        # Check for conflicts
+        if Booking.check_conflicts(start_time, end_time, data['aircraft_id'], data['instructor_id']):
             return jsonify({'error': 'Time slot is not available'}), 400
         
-        booking = Booking(
+        booking_id = Booking.create(
             start_time=start_time,
             end_time=end_time,
             user_id=current_user.id,
             aircraft_id=data['aircraft_id'],
-            instructor_id=data['instructor_id'],
-            status='confirmed'
+            instructor_id=data['instructor_id']
         )
         
-        db.session.add(booking)
-        db.session.commit()
-        logger.info(f"Successfully created booking {booking.id}")
+        # Get the created booking
+        booking = Booking.get_by_id(booking_id)
+        logger.info(f"Successfully created booking {booking_id}")
         
         return jsonify({
             'message': 'Booking created successfully',
-            'booking': {
-                'id': booking.id,
-                'start_time': booking.start_time.isoformat(),
-                'end_time': booking.end_time.isoformat(),
-                'aircraft': booking.aircraft.make_model,
-                'instructor': booking.instructor.name,
-                'status': booking.status
-            }
+            'booking': booking
         }), 201
         
     except Exception as e:
@@ -567,26 +569,48 @@ def bookings_redirect():
 @app.route('/api/available-aircraft', methods=['GET'])
 @login_required
 def get_available_aircraft():
-    try:
-        # Get all aircraft
-        aircraft = Aircraft.query.all()
-        logger.info(f"Returning {len(aircraft)} aircraft")
-        return jsonify([a.to_dict() for a in aircraft])
-    except Exception as e:
-        logger.error(f"Error in get_available_aircraft: {str(e)}")
-        return jsonify({'error': 'Failed to get available aircraft'}), 500
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    
+    # Get all aircraft
+    aircraft = Aircraft.get_all()
+    
+    # If no time range specified, return all aircraft
+    if not start_time or not end_time:
+        return jsonify(aircraft)
+    
+    # Parse datetime strings
+    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+    
+    # Check availability for each aircraft
+    for a in aircraft:
+        a['available'] = not Booking.check_conflicts(start_time, end_time, aircraft_id=a['id'])
+    
+    return jsonify(aircraft)
 
 @app.route('/api/available-instructors', methods=['GET'])
 @login_required
 def get_available_instructors():
-    try:
-        # Get all instructors
-        instructors = Instructor.query.all()
-        logger.info(f"Returning {len(instructors)} instructors")
-        return jsonify([i.to_dict() for i in instructors])
-    except Exception as e:
-        logger.error(f"Error in get_available_instructors: {str(e)}")
-        return jsonify({'error': 'Failed to get available instructors'}), 500
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    
+    # Get all instructors
+    instructors = Instructor.get_all()
+    
+    # If no time range specified, return all instructors
+    if not start_time or not end_time:
+        return jsonify(instructors)
+    
+    # Parse datetime strings
+    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+    
+    # Check availability for each instructor
+    for i in instructors:
+        i['available'] = not Booking.check_conflicts(start_time, end_time, instructor_id=i['id'])
+    
+    return jsonify(instructors)
 
 @app.route('/api/bookings/calendar', methods=['GET'])
 @login_required
@@ -595,70 +619,53 @@ def get_calendar_bookings():
     start_date = datetime.utcnow()
     end_date = start_date + timedelta(days=30)
     
-    bookings = Booking.query.filter(
-        Booking.start_time >= start_date,
-        Booking.start_time <= end_date
-    ).all()
+    bookings = Booking.get_by_date_range(start_date, end_date)
     
-    return jsonify([{
-        'id': b.id,
-        'start': b.start_time.isoformat(),
-        'end': b.end_time.isoformat(),
-        'aircraft': b.aircraft.make_model if b.aircraft else None,
-        'instructor': b.instructor.name if b.instructor else None,
-        'is_own_booking': b.user_id == current_user.id,
-        'status': b.status
-    } for b in bookings])
+    # Format bookings for FullCalendar
+    events = []
+    for booking in bookings:
+        aircraft_name = booking.get('aircraft_name', 'No Aircraft')
+        instructor_name = booking.get('instructor_name', 'No Instructor')
+        
+        events.append({
+            'id': booking['id'],
+            'title': f"{aircraft_name} - {instructor_name}",
+            'start': booking['start_time'],
+            'end': booking['end_time'],
+            'status': booking['status']
+        })
+    
+    return jsonify(events)
 
 @app.route('/api/check-availability', methods=['POST'])
 @login_required
 def check_availability():
     data = request.get_json()
     
-    # Parse datetime strings from ISO format
-    start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
-    end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
-    
-    # Validate time range
-    if end_time <= start_time:
-        return jsonify({'error': 'End time must be after start time'}), 400
-    
-    # Get all non-cancelled bookings that overlap with the requested time slot
-    overlapping_bookings = Booking.query.filter(
-        Booking.status != 'cancelled',
-        Booking.start_time < end_time,
-        Booking.end_time > start_time
-    ).all()
-    
-    # Get all aircraft and instructors
-    all_aircraft = Aircraft.query.all()
-    all_instructors = Instructor.query.all()
-    
-    # Mark which ones are available
-    booked_aircraft_ids = {b.aircraft_id for b in overlapping_bookings if b.aircraft_id}
-    booked_instructor_ids = {b.instructor_id for b in overlapping_bookings if b.instructor_id}
-    
-    aircraft_list = [{
-        'id': a.id,
-        'make_model': a.make_model,
-        'tail_number': a.tail_number,
-        'type': a.type,
-        'available': a.id not in booked_aircraft_ids
-    } for a in all_aircraft]
-    
-    instructor_list = [{
-        'id': i.id,
-        'name': i.name,
-        'email': i.email,
-        'phone': i.phone,
-        'ratings': i.ratings.split(',') if i.ratings else [],
-        'available': i.id not in booked_instructor_ids
-    } for i in all_instructors]
-    
-    return jsonify({
-        'aircraft': aircraft_list,
-        'instructors': instructor_list
-    })
+    try:
+        # Parse datetime strings
+        start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+        
+        # Check aircraft availability
+        aircraft_available = not Booking.check_conflicts(
+            start_time, end_time, aircraft_id=data['aircraft_id']
+        ) if data.get('aircraft_id') else True
+        
+        # Check instructor availability
+        instructor_available = not Booking.check_conflicts(
+            start_time, end_time, instructor_id=data['instructor_id']
+        ) if data.get('instructor_id') else True
+        
+        return jsonify({
+            'available': aircraft_available and instructor_available,
+            'aircraft_available': aircraft_available,
+            'instructor_available': instructor_available
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking availability: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/account')
 @login_required
