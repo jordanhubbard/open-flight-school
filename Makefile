@@ -104,17 +104,6 @@ local-venv:
 
 # Initialize local database and migrations
 local-init:
-	. venv/bin/activate && \
-	flask db init && \
-	flask db migrate -m "Initial migration" && \
-	flask db upgrade
-
-# Load test data locally
-local-test-data:
-	. venv/bin/activate && python load_test_data.py
-
-# Setup and run local development environment
-local-dev: local-clean local-venv
 	@if [ ! -f .env ]; then \
 		echo "Creating default .env file..."; \
 		echo "SECRET_KEY=local-dev-key" > .env; \
@@ -128,14 +117,20 @@ local-dev: local-clean local-venv
 		echo "MAIL_PASSWORD=test" >> .env; \
 		echo "BASE_URL=http://localhost:5001" >> .env; \
 	fi
-	@echo "Setting up local development environment..."
-	@echo "1. Virtual environment and dependencies installed"
-	@make local-init
-	@echo "2. Database initialized"
-	@make local-test-data
-	@echo "3. Test data loaded"
+	. venv/bin/activate && \
+	export $$(cat .env | xargs) && \
+	flask db init && \
+	flask db migrate -m "Initial migration" && \
+	flask db upgrade
+
+# Load test data locally
+local-test-data:
+	. venv/bin/activate && export $$(cat .env | xargs) && python load_test_data.py
+
+# Setup and run local development environment
+local-dev: local-clean local-venv local-init local-test-data
 	@echo "\nStarting Flask development server..."
-	. venv/bin/activate && flask run --port 5001
+	. venv/bin/activate && export $$(cat .env | xargs) && flask run --port 5001
 
 # Run tests locally
 local-test:
