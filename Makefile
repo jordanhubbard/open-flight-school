@@ -25,7 +25,6 @@ clean:
 	docker compose down -v
 	docker compose rm -f
 	docker system prune -f
-	${RM} -r venv
 
 # Reset the database (drop and recreate)
 db-reset:
