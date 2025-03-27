@@ -24,7 +24,7 @@ def capture_logs(caplog):
 def app_context():
     app.testing = True
     app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('TEST_DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/flight_school_test')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('TEST_DATABASE_URL', 'sqlite:///:memory:')
     app.config['MAIL_SUPPRESS_SEND'] = True
     app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
     app.config['MAIL_SERVER'] = 'localhost'
@@ -40,19 +40,85 @@ def app_context():
         db.drop_all()
 
 @pytest.fixture
-def client(app_context):
+def client():
+    app.config['TESTING'] = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app.config['WTF_CSRF_ENABLED'] = False
+    
     with app.test_client() as client:
-        # Create test user
         with app.app_context():
-            user = User(
-                email='test@example.com',
-                first_name='Test',
-                last_name='User'
-            )
-            user.set_password('test123')
-            db.session.add(user)
-            db.session.commit()
-        yield client
+            db.create_all()
+            yield client
+            db.session.remove()
+            db.drop_all()
+
+@pytest.fixture
+def test_user():
+    with app.app_context():
+        user = User(
+            first_name='Test',
+            last_name='User',
+            email='test@example.com',
+            is_admin=False
+        )
+        user.set_password('password123')
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+@pytest.fixture
+def test_admin():
+    with app.app_context():
+        admin = User(
+            first_name='Admin',
+            last_name='User',
+            email='admin@example.com',
+            is_admin=True
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
+        db.session.commit()
+        return admin
+
+@pytest.fixture
+def test_aircraft():
+    with app.app_context():
+        aircraft = Aircraft(
+            make_model='Cessna 172',
+            tail_number='N12345',
+            type='Single Engine Piston'
+        )
+        db.session.add(aircraft)
+        db.session.commit()
+        return aircraft
+
+@pytest.fixture
+def test_instructor():
+    with app.app_context():
+        instructor = Instructor(
+            name='John Doe',
+            email='john@example.com',
+            phone='123-456-7890',
+            ratings=['CFI', 'CFII', 'MEI']
+        )
+        db.session.add(instructor)
+        db.session.commit()
+        return instructor
+
+@pytest.fixture
+def test_booking(test_user, test_aircraft, test_instructor):
+    with app.app_context():
+        booking = Booking(
+            user_id=test_user.id,
+            aircraft_id=test_aircraft.id,
+            instructor_id=test_instructor.id,
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow() + timedelta(hours=1),
+            status='confirmed'
+        )
+        db.session.add(booking)
+        db.session.commit()
+        return booking
 
 def test_register(client):
     response = client.post('/api/register', json={

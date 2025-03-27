@@ -4,7 +4,7 @@ from flask_mail import Message
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from extensions import db, login_manager, mail, migrate
+from extensions import db, login_manager, mail
 from models import User, Aircraft, Instructor, Booking
 from urllib.parse import urljoin
 from functools import wraps
@@ -26,7 +26,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///flight_school.db')
+
+# Database configuration
+database_url = os.getenv('DATABASE_URL', 'sqlite:///instance/flight_school.db')
+if database_url.startswith('sqlite:///'):
+    # Ensure the instance folder exists
+    os.makedirs(os.path.dirname(os.path.abspath(database_url.replace('sqlite:///', ''))), exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration
@@ -60,7 +66,6 @@ login_manager.login_view = 'login_page'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
 mail.init_app(app)
-migrate.init_app(app, db)
 
 @login_manager.user_loader
 def load_user(user_id):

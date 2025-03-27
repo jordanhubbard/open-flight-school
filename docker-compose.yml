@@ -1,54 +1,37 @@
+version: '3.8'
+
 services:
   web:
     build: .
     ports:
       - "5001:5001"
+    volumes:
+      - .:/app
+      - instance:/app/instance
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/flight_school
       - FLASK_APP=app.py
       - FLASK_ENV=development
+      - DATABASE_URL=sqlite:///instance/flight_school.db
       - SECRET_KEY=${SECRET_KEY}
       - MAIL_SERVER=${MAIL_SERVER}
       - MAIL_PORT=${MAIL_PORT}
-      - MAIL_USE_TLS=${MAIL_USE_TLS}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - BASE_URL=${BASE_URL}
-    volumes:
-      - .:/app
     depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - app-network
+      - mail
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_DB=flight_school
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  mail:
+    image: mailhog/mailhog
     ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/tmp
+    volumes:
+      - mail_data:/tmp
 
 volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge 
+  instance:
+  mail_data: 

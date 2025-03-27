@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,12 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Create a non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
+# Create instance directory for SQLite database
+RUN mkdir -p instance
 
-# Expose the port the app runs on
+# Expose port
 EXPOSE 5001
 
-# Command to run the application
-CMD ["flask", "run", "--host=0.0.0.0"] 
+# Run the application
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5001"] 

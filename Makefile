@@ -3,7 +3,7 @@ SHELL := /bin/sh
 
 .PHONY: build up down logs test clean db-reset init test-data local-clean local-dev local-init local-test-data
 
-# Build the containers
+# Docker commands
 build:
 	docker compose build
 
@@ -25,39 +25,25 @@ test:
 
 # Clean up containers and volumes
 clean:
-	docker compose down -v --remove-orphans
-	docker compose rm -f
-	rm -rf __pycache__ */__pycache__ */*/__pycache__
-	rm -rf instance
-	rm -rf migrations
-	rm -f *.pyc */*.pyc */*/*.pyc
-	rm -f *.sqlite *.sqlite3 *.db
-
-# Deep clean - includes docker system prune
-deep-clean: clean
-	docker system prune -f
+	docker compose down -v
+	rm -rf instance/*.db
 
 # Reset the database (drop and recreate)
 db-reset:
-	docker compose down -v --remove-orphans
-	docker compose up -d db
-	sleep 5  # Wait for database to be ready
-	docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
-	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;"
-	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-
-# Initialize migrations
-init-migrations:
-	docker compose run --rm web flask db init
-	docker compose run --rm web flask db migrate -m "Initial migration"
-	docker compose run --rm web flask db upgrade
+	docker compose down -v
+	rm -rf instance/*.db
+	docker compose up -d
+	flask db upgrade
+	flask seed-db
 
 # Initialize the database with migrations
-init: db-reset init-migrations
+init:
+	docker compose up -d
+	flask db upgrade
 
 # Load test data
 test-data:
-	docker compose run --rm web python load_test_data.py
+	flask seed-db
 
 # Development workflow: build, init, and start (without test data)
 dev: build init up
@@ -94,74 +80,34 @@ service-logs:
 # Clean local development files
 local-clean:
 	rm -rf venv
-	rm -rf __pycache__ */__pycache__ */*/__pycache__
 	rm -rf instance
-	rm -rf migrations
-	rm -f *.pyc */*.pyc */*/*.pyc
-	rm -f *.sqlite *.sqlite3 *.db
+	rm -rf __pycache__
+	rm -rf .pytest_cache
+	rm -rf .coverage
+	rm -rf htmlcov
 
 # Initialize local virtual environment
 local-venv:
-	python3 -m venv venv
-	{ \
-		. ./venv/bin/activate; \
-		pip install -r requirements.txt; \
-	}
+	python -m venv venv
+	. venv/bin/activate && pip install -r requirements.txt
 
-# Initialize local database and migrations
+# Initialize local database
 local-init:
-	if [ ! -f .env ]; then \
-		printf '%s\n' \
-			'SECRET_KEY=local-dev-key' \
-			'FLASK_APP=app.py' \
-			'FLASK_ENV=development' \
-			'DATABASE_URL=sqlite:///flight_school.db' \
-			'MAIL_SERVER=localhost' \
-			'MAIL_PORT=1025' \
-			'MAIL_USE_TLS=False' \
-			'MAIL_USERNAME=test' \
-			'MAIL_PASSWORD=test' \
-			'BASE_URL=http://localhost:5001' > .env; \
-	fi
-	{ \
-		. ./venv/bin/activate; \
-		while IFS= read -r line || [ -n "$$line" ]; do \
-			case "$$line" in \
-				"#"*|"") continue ;; \
-				*) export "$$line" ;; \
-			esac \
-		done < .env; \
-		flask db init; \
-		flask db migrate -m "Initial migration"; \
-		flask db upgrade; \
-	}
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	flask db upgrade
 
 # Load test data locally
 local-test-data:
-	{ \
-		. ./venv/bin/activate; \
-		while IFS= read -r line || [ -n "$$line" ]; do \
-			case "$$line" in \
-				"#"*|"") continue ;; \
-				*) export "$$line" ;; \
-			esac \
-		done < .env; \
-		python load_test_data.py; \
-	}
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	flask seed-db
 
 # Setup and run local development environment
-local-dev: local-clean local-venv local-init local-test-data
-	printf '%s\n' "Starting Flask development server..."
-	{ \
-		. ./venv/bin/activate; \
-		while IFS= read -r line || [ -n "$$line" ]; do \
-			case "$$line" in \
-				"#"*|"") continue ;; \
-				*) export "$$line" ;; \
-			esac \
-		done < .env; \
-		flask run --port 5001; \
-	}
+local-dev:
+	. venv/bin/activate && \
+	export $$(cat .env | grep -v '^#' | xargs) && \
+	flask run --port=5001
 
 # Run tests locally
 local-test:
