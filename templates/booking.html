@@ -658,11 +658,11 @@ function initializeCalendar() {
     if (!calendarEl) return;
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
+        initialView: 'timeGridWeek',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'timeGridWeek,timeGridDay,dayGridMonth'
         },
         events: bookings.map(booking => ({
             id: booking.id,
@@ -694,7 +694,12 @@ function initializeCalendar() {
                 `;
                 info.el.title = tooltip;
             }
-        }
+        },
+        slotMinTime: '06:00:00',
+        slotMaxTime: '22:00:00',
+        allDaySlot: false,
+        nowIndicator: true,
+        scrollTime: '08:00:00'
     });
     calendar.render();
 }
