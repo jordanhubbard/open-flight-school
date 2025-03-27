@@ -14,7 +14,8 @@
             "password": "password123",
             "address": "123 Main St",
             "phone": "555-0101",
-            "credit_card": "4111111111111111"
+            "credit_card": "4111111111111111",
+            "is_admin": false
         },
         {
             "first_name": "Jane",
@@ -23,7 +24,8 @@
             "password": "password456",
             "address": "456 Oak Ave",
             "phone": "555-0102",
-            "credit_card": "4111111111111112"
+            "credit_card": "4111111111111112",
+            "is_admin": false
         },
         {
             "first_name": "Bob",
@@ -32,7 +34,8 @@
             "password": "password789",
             "address": "789 Pine Rd",
             "phone": "555-0103",
-            "credit_card": "4111111111111113"
+            "credit_card": "4111111111111113",
+            "is_admin": false
         }
     ],
     "aircraft": [
