@@ -23,3 +23,44 @@ go.work.sum
 
 # env file
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Flask
+instance/
+.webassets-cache
+migrations/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
