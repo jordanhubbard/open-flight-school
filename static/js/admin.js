@@ -55,11 +55,23 @@ function displayInstructors() {
     const tbody = document.getElementById('instructorsTableBody');
     if (!tbody) return;
     
+    if (!instructorData || instructorData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No instructors found</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = instructorData.map(instructor => {
-        // Convert ratings string to array and create badges
-        const ratingBadges = instructor.ratings ? instructor.ratings.split(',').map(rating => 
-            `<span class="badge bg-secondary me-1">${rating.trim()}</span>`
-        ).join('') : '<span class="text-muted">N/A</span>';
+        // Create badges for each rating with consistent styling
+        const ratingBadges = Array.isArray(instructor.ratings) && instructor.ratings.length > 0
+            ? instructor.ratings.map(rating => {
+                let badgeClass = 'bg-secondary';
+                if (rating === 'CFI') badgeClass = 'bg-primary';
+                else if (rating === 'CFII') badgeClass = 'bg-info';
+                else if (rating === 'MEI') badgeClass = 'bg-success';
+                else if (rating.endsWith('GI')) badgeClass = 'bg-warning text-dark';
+                return `<span class="badge ${badgeClass} me-1">${rating}</span>`;
+            }).join('')
+            : '<span class="text-muted">No ratings</span>';
 
         return `
             <tr>
@@ -199,14 +211,24 @@ async function saveAircraft() {
 
 // Instructor Management
 async function saveInstructor() {
+    const instructorId = document.getElementById('instructorId').value;
+    
+    // Get ratings input and convert to array, filtering out invalid ones
+    const ratingsInput = document.getElementById('instructorRatings').value;
+    // Split by comma, convert to uppercase, and filter valid ratings
+    const validRatings = ['CFI', 'CFII', 'MEI', 'AGI', 'BGI', 'IGI', 'CFIS', 'CFIG'];
+    const ratings = ratingsInput
+        .split(',')
+        .map(r => r.trim().toUpperCase())
+        .filter(r => validRatings.includes(r));  // Only keep valid ratings
+    
     const data = {
         name: document.getElementById('instructorName').value,
         email: document.getElementById('instructorEmail').value,
         phone: document.getElementById('instructorPhone').value,
-        ratings: document.getElementById('instructorRatings').value.split(',').map(r => r.trim()).filter(r => r)
+        ratings: ratings  // Send as array
     };
     
-    const instructorId = document.getElementById('instructorId').value;
     const method = instructorId ? 'PUT' : 'POST';
     const url = instructorId ? `/api/admin/instructors/${instructorId}` : '/api/admin/instructors';
     
@@ -251,21 +273,22 @@ function editAircraft(id) {
 }
 
 function editInstructor(id) {
-    fetch(`/api/admin/instructors/${id}`)
-        .then(response => response.json())
-        .then(instructor => {
-            document.getElementById('instructorModalTitle').textContent = 'Edit Instructor';
-            document.getElementById('instructorId').value = instructor.id;
-            document.getElementById('instructorName').value = instructor.name;
-            document.getElementById('instructorEmail').value = instructor.email;
-            document.getElementById('instructorPhone').value = instructor.phone;
-            document.getElementById('instructorRatings').value = instructor.ratings.join(', ');
-            new bootstrap.Modal(document.getElementById('instructorModal')).show();
-        })
-        .catch(error => {
-            console.error('Error loading instructor:', error);
-            showError('Failed to load instructor data');
-        });
+    const instructor = instructorData.find(i => i.id === id);
+    if (!instructor) {
+        showError('Instructor not found');
+        return;
+    }
+
+    document.getElementById('instructorModalTitle').textContent = 'Edit Instructor';
+    document.getElementById('instructorId').value = instructor.id;
+    document.getElementById('instructorName').value = instructor.name;
+    document.getElementById('instructorEmail').value = instructor.email;
+    document.getElementById('instructorPhone').value = instructor.phone;
+    // Join ratings array with commas for the input field
+    document.getElementById('instructorRatings').value = Array.isArray(instructor.ratings) 
+        ? instructor.ratings.join(', ')
+        : '';
+    new bootstrap.Modal(document.getElementById('instructorModal')).show();
 }
 
 // Delete functions

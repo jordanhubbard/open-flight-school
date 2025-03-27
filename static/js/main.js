@@ -770,9 +770,16 @@ async function loadInstructors() {
             
             instructors.forEach(i => {
                 const row = document.createElement('tr');
-                // Create badges for each rating
+                // Create badges for each rating with consistent styling
                 const ratingBadges = Array.isArray(i.ratings) && i.ratings.length > 0
-                    ? i.ratings.map(rating => `<span class="badge bg-secondary me-1">${rating}</span>`).join('')
+                    ? i.ratings.map(rating => {
+                        let badgeClass = 'bg-secondary';
+                        if (rating === 'CFI') badgeClass = 'bg-primary';
+                        else if (rating === 'CFII') badgeClass = 'bg-info';
+                        else if (rating === 'MEI') badgeClass = 'bg-success';
+                        else if (rating.endsWith('GI')) badgeClass = 'bg-warning text-dark';
+                        return `<span class="badge ${badgeClass} me-1">${rating}</span>`;
+                    }).join('')
                     : '<span class="text-muted">No ratings</span>';
                 
                 row.innerHTML = `
@@ -871,30 +878,48 @@ function displayInstructors(instructors) {
     const tableBody = document.querySelector('#instructorsTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = instructors.map(i => `
-        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
-            onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
-            style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
-            <td>
-                <input type="radio" name="instructor" value="${i.id}" 
-                    ${selectedInstructor === i.id ? 'checked' : ''}
-                    ${!i.available ? 'disabled' : ''}>
-            </td>
-            <td>${i.name}</td>
-            <td>${i.email}</td>
-            <td>${i.phone}</td>
-            <td>${i.credentials || 'N/A'}</td>
-        </tr>
-    `).join('');
+    if (!instructors || instructors.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No instructors available</td></tr>';
+        return;
+    }
 
-    // Add click event listeners to rows
+    tableBody.innerHTML = instructors.map(i => {
+        // Create badges for each rating - ensure ratings is treated as an array
+        const ratingBadges = Array.isArray(i.ratings) && i.ratings.length > 0 
+            ? i.ratings.map(rating => {
+                // Color-code badges based on rating type
+                let badgeClass = 'bg-secondary';
+                if (rating === 'CFI') badgeClass = 'bg-primary';
+                else if (rating === 'CFII') badgeClass = 'bg-info';
+                else if (rating === 'MEI') badgeClass = 'bg-success';
+                else if (rating.endsWith('GI')) badgeClass = 'bg-warning text-dark'; // Ground instructor ratings
+                return `<span class="badge ${badgeClass} me-1">${rating}</span>`;
+            }).join('') 
+            : '<span class="text-muted">No ratings</span>';
+
+        return `
+            <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
+                onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
+                style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
+                <td>
+                    <input type="radio" name="instructor" value="${i.id}" 
+                        ${selectedInstructor === i.id ? 'checked' : ''}
+                        ${!i.available ? 'disabled' : ''}>
+                </td>
+                <td>${i.name}</td>
+                <td>${i.email}</td>
+                <td>${i.phone}</td>
+                <td>${ratingBadges}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Add click event listeners to the rows
     tableBody.querySelectorAll('tr').forEach(row => {
         if (!row.classList.contains('text-muted')) {
             row.addEventListener('click', function() {
-                const radioBtn = this.querySelector('input[type="radio"]');
-                if (radioBtn && !radioBtn.disabled) {
-                    selectInstructor(parseInt(radioBtn.value), this);
-                }
+                const id = parseInt(row.querySelector('input[type="radio"]').value);
+                selectInstructor(id, row);
             });
         }
     });
@@ -1158,4 +1183,23 @@ function updateEndTime() {
         const endTime = calculateEndTime(startTime, parseFloat(durationSelect.value));
         endTimeInput.value = formatTimeForInput(endTime);
     }
+}
+
+// Update the edit instructor function to handle ratings properly
+function editInstructor(id) {
+    const instructor = instructors.find(i => i.id === id);
+    if (!instructor) return;
+
+    document.getElementById('instructorModalTitle').textContent = 'Edit Instructor';
+    document.getElementById('instructorId').value = instructor.id;
+    document.getElementById('instructorName').value = instructor.name;
+    document.getElementById('instructorEmail').value = instructor.email;
+    document.getElementById('instructorPhone').value = instructor.phone;
+    // Join ratings array with commas for the input field
+    document.getElementById('instructorRatings').value = Array.isArray(instructor.ratings) 
+        ? instructor.ratings.join(', ')
+        : '';
+
+    const modal = new bootstrap.Modal(document.getElementById('instructorModal'));
+    modal.show();
 } 
