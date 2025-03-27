@@ -904,4 +904,62 @@ async function saveBooking() {
         console.error('Error creating booking:', error);
         showError('Failed to create booking');
     }
-} 
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Login link
+    const loginLink = document.getElementById('login-link');
+    if (loginLink) {
+        loginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLoginModal();
+        });
+    }
+
+    // Register link
+    const registerLink = document.getElementById('register-link');
+    if (registerLink) {
+        registerLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRegisterModal();
+        });
+    }
+
+    // Logout link
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/logout';
+        });
+    }
+
+    // Login form
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const credentials = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+            loginUser(credentials);
+        });
+    }
+
+    // Register form
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userData = {
+                first_name: document.getElementById('registerFirstName').value,
+                last_name: document.getElementById('registerLastName').value,
+                email: document.getElementById('registerEmail').value,
+                password: document.getElementById('registerPassword').value
+            };
+            registerUser(userData);
+        });
+    }
+}); 
