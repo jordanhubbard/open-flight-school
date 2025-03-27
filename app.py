@@ -115,7 +115,7 @@ def login_page():
 def logout():
     logout_user()
     session.clear()
-    return redirect(url_for('login_page'))
+    return redirect(url_for('home'))
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -172,10 +172,12 @@ def get_bookings():
     bookings = Booking.query.filter_by(user_id=current_user.id).all()
     return jsonify([{
         'id': b.id,
-        'start_time': b.start_time.isoformat(),
-        'end_time': b.end_time.isoformat(),
+        'start_time': b.start_time.isoformat(),  # This will include timezone info
+        'end_time': b.end_time.isoformat(),      # This will include timezone info
         'aircraft': b.aircraft.make_model if b.aircraft else None,
         'instructor': b.instructor.name if b.instructor else None,
+        'aircraft_id': b.aircraft_id,
+        'instructor_id': b.instructor_id,
         'status': b.status
     } for b in bookings])
 
@@ -183,36 +185,42 @@ def get_bookings():
 @login_required
 def create_booking():
     data = request.get_json()
+    logger.info(f"Creating booking with data: {data}")
     
-    # Check for conflicts
-    conflicts = Booking.query.filter(
-        ((Booking.aircraft_id == data['aircraft_id']) | (Booking.instructor_id == data['instructor_id'])) &
-        ((Booking.start_time <= data['end_time']) & (Booking.end_time >= data['start_time']))
-    ).first()
-    
-    if conflicts:
-        return jsonify({'error': 'Time slot is not available'}), 400
-    
-    booking = Booking(
-        start_time=datetime.fromisoformat(data['start_time']),
-        end_time=datetime.fromisoformat(data['end_time']),
-        user_id=current_user.id,
-        aircraft_id=data.get('aircraft_id'),
-        instructor_id=data.get('instructor_id'),
-        status='confirmed'  # Explicitly set status to confirmed
-    )
-    
-    db.session.add(booking)
-    db.session.commit()
-    
-    # Try to send confirmation email, but don't fail if it doesn't work
     try:
-        send_confirmation_email(booking)
+        # Parse datetime strings and convert to local time
+        start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+        
+        # Check for conflicts with non-cancelled bookings
+        conflicts = Booking.query.filter(
+            Booking.status != 'cancelled',
+            ((Booking.aircraft_id == data['aircraft_id']) | (Booking.instructor_id == data['instructor_id'])) &
+            ((Booking.start_time <= end_time) & (Booking.end_time >= start_time))
+        ).first()
+        
+        if conflicts:
+            logger.info(f"Found conflicting booking: {conflicts.id}")
+            return jsonify({'error': 'Time slot is not available'}), 400
+        
+        booking = Booking(
+            start_time=start_time,
+            end_time=end_time,
+            user_id=current_user.id,
+            aircraft_id=data['aircraft_id'],
+            instructor_id=data['instructor_id'],
+            status='confirmed'
+        )
+        
+        db.session.add(booking)
+        db.session.commit()
+        logger.info(f"Successfully created booking {booking.id}")
+        
+        return jsonify({'message': 'Booking created successfully'}), 201
+        
     except Exception as e:
-        logger.error(f"Failed to send confirmation email: {str(e)}")
-        # Continue without sending email
-    
-    return jsonify({'message': 'Booking created successfully'}), 201
+        logger.error(f"Error creating booking: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 def send_confirmation_email(booking):
     if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
@@ -572,54 +580,46 @@ def get_calendar_bookings():
 @login_required
 def check_availability():
     data = request.get_json()
+    
+    # Parse datetime strings and convert to local time
     start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
     end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
     
+    # Get all non-cancelled bookings that overlap with the requested time slot
+    overlapping_bookings = Booking.query.filter(
+        Booking.status != 'cancelled',
+        Booking.start_time < end_time,
+        Booking.end_time > start_time
+    ).all()
+    
     # Get all aircraft and instructors
-    aircraft = Aircraft.query.all()
-    instructors = Instructor.query.all()
+    all_aircraft = Aircraft.query.all()
+    all_instructors = Instructor.query.all()
     
-    # Check availability for each aircraft
-    available_aircraft = []
-    for a in aircraft:
-        # Check if aircraft has any bookings during the requested time
-        conflicting_bookings = Booking.query.filter(
-            Booking.aircraft_id == a.id,
-            Booking.status != 'cancelled',
-            Booking.start_time < end_time,
-            Booking.end_time > start_time
-        ).count()
-        
-        available_aircraft.append({
-            'id': a.id,
-            'make_model': a.make_model,
-            'tail_number': a.tail_number,
-            'type': a.type,
-            'available': conflicting_bookings == 0
-        })
+    # Mark which ones are available
+    booked_aircraft_ids = {b.aircraft_id for b in overlapping_bookings if b.aircraft_id}
+    booked_instructor_ids = {b.instructor_id for b in overlapping_bookings if b.instructor_id}
     
-    # Check availability for each instructor
-    available_instructors = []
-    for i in instructors:
-        # Check if instructor has any bookings during the requested time
-        conflicting_bookings = Booking.query.filter(
-            Booking.instructor_id == i.id,
-            Booking.status != 'cancelled',
-            Booking.start_time < end_time,
-            Booking.end_time > start_time
-        ).count()
-        
-        available_instructors.append({
-            'id': i.id,
-            'name': i.name,
-            'email': i.email,
-            'phone': i.phone,
-            'available': conflicting_bookings == 0
-        })
+    aircraft_list = [{
+        'id': a.id,
+        'make_model': a.make_model,
+        'tail_number': a.tail_number,
+        'type': a.type,
+        'available': a.id not in booked_aircraft_ids
+    } for a in all_aircraft]
+    
+    instructor_list = [{
+        'id': i.id,
+        'name': i.name,
+        'email': i.email,
+        'phone': i.phone,
+        'credentials': i.ratings,
+        'available': i.id not in booked_instructor_ids
+    } for i in all_instructors]
     
     return jsonify({
-        'aircraft': available_aircraft,
-        'instructors': available_instructors
+        'aircraft': aircraft_list,
+        'instructors': instructor_list
     })
 
 @app.route('/account')
@@ -637,6 +637,7 @@ def get_user():
         'email': current_user.email,
         'phone': current_user.phone,
         'address': current_user.address,
+        'credit_card': current_user.credit_card,
         'is_admin': current_user.is_admin
     })
 
@@ -656,6 +657,7 @@ def update_user():
     current_user.email = data.get('email', current_user.email)
     current_user.phone = data.get('phone', current_user.phone)
     current_user.address = data.get('address', current_user.address)
+    current_user.credit_card = data.get('credit_card', current_user.credit_card)
     
     # Update password if provided
     if data.get('password'):

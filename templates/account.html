@@ -31,6 +31,11 @@
                             <textarea class="form-control" id="address" name="address" rows="3"></textarea>
                         </div>
                         <div class="mb-3">
+                            <label for="creditCard" class="form-label">Credit Card Number</label>
+                            <input type="text" class="form-control" id="creditCard" name="credit_card" pattern="[0-9]{16}" maxlength="16" placeholder="Enter 16-digit card number">
+                            <div class="form-text">Enter your 16-digit credit card number (numbers only)</div>
+                        </div>
+                        <div class="mb-3">
                             <label for="password" class="form-label">New Password (leave blank to keep current)</label>
                             <input type="password" class="form-control" id="password" name="password">
                         </div>
@@ -56,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('email').value = data.email;
             document.getElementById('phone').value = data.phone || '';
             document.getElementById('address').value = data.address || '';
+            document.getElementById('creditCard').value = data.credit_card || '';
         })
         .catch(error => {
             console.error('Error loading user data:', error);
@@ -71,7 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
             last_name: document.getElementById('lastName').value,
             email: document.getElementById('email').value,
             phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value
+            address: document.getElementById('address').value,
+            credit_card: document.getElementById('creditCard').value
         };
 
         // Only include password if it's not empty

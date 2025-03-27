@@ -344,16 +344,19 @@ let selectedInstructor = null;
 document.addEventListener('DOMContentLoaded', function() {
     const now = new Date();
     
-    // Set default date
+    // Set default date in local time
     const dateInput = document.getElementById('bookingDate');
-    dateInput.value = now.toISOString().split('T')[0];
-    dateInput.min = now.toISOString().split('T')[0];
+    const localDate = now.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+    dateInput.value = localDate;
+    dateInput.min = localDate;
     
-    // Set default start time (current time rounded to next 15 minutes)
+    // Set default start time (current time rounded to next 15 minutes) in local time
     const startTimeInput = document.getElementById('startTimeInput');
     const minutes = Math.ceil(now.getMinutes() / 15) * 15;
     now.setMinutes(minutes, 0, 0);
-    startTimeInput.value = now.toTimeString().slice(0, 5);
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(minutes).padStart(2, '0');
+    startTimeInput.value = `${hours}:${mins}`;
     
     // Set default duration to 1 hour
     const durationSelect = document.getElementById('durationSelect');
@@ -420,6 +423,7 @@ async function checkAvailabilityAndBook(showErrors = true) {
         return;
     }
     
+    // Create local datetime objects
     const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
     const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
     
@@ -572,11 +576,11 @@ function bookNow() {
     const startTimeInput = document.getElementById('startTimeInput');
     const endTimeInput = document.getElementById('endTimeInput');
     
-    // Create full datetime strings
+    // Create local datetime objects
     const startDateTime = new Date(dateInput.value + 'T' + startTimeInput.value);
     const endDateTime = new Date(dateInput.value + 'T' + endTimeInput.value);
     
-    // Set the values in the booking modal
+    // Set the values in the booking modal (in local time)
     const startTimeField = document.getElementById('startTime');
     const endTimeField = document.getElementById('endTime');
     const aircraftSelect = document.getElementById('aircraftSelect');
@@ -584,7 +588,7 @@ function bookNow() {
     const selectedAircraftText = document.getElementById('selectedAircraftText');
     const selectedInstructorText = document.getElementById('selectedInstructorText');
     
-    // Set datetime values
+    // Format datetime-local inputs in local time
     startTimeField.value = startDateTime.toISOString().slice(0, 16);
     endTimeField.value = endDateTime.toISOString().slice(0, 16);
     
@@ -592,9 +596,9 @@ function bookNow() {
     const selectedAircraftObj = aircraft.find(a => a.id === selectedAircraft);
     const selectedInstructorObj = instructors.find(i => i.id === selectedInstructor);
     
+    // Set the select values and display text
     aircraftSelect.value = selectedAircraft;
     instructorSelect.value = selectedInstructor;
-    
     selectedAircraftText.textContent = `${selectedAircraftObj.make_model} (${selectedAircraftObj.tail_number})`;
     selectedInstructorText.textContent = selectedInstructorObj.name;
     
@@ -608,10 +612,11 @@ function displayBookings() {
     if (!tableBody) return;
 
     tableBody.innerHTML = bookings.map(booking => {
+        // Convert UTC dates to local time
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
         
-        // Format date and time
+        // Format date and time in local timezone
         const date = startTime.toLocaleDateString('en-US', { 
             weekday: 'short', 
             year: 'numeric', 
@@ -631,12 +636,16 @@ function displayBookings() {
         const statusClass = booking.status === 'cancelled' ? 'bg-danger' : 'bg-success';
         const statusText = booking.status === 'cancelled' ? 'Cancelled' : 'Confirmed';
 
+        // Get aircraft and instructor names from the booking data
+        const aircraftName = booking.aircraft || 'Not selected';
+        const instructorName = booking.instructor || 'Not selected';
+
         return `
             <tr>
                 <td>${date}</td>
                 <td>${timeRange}</td>
-                <td>${booking.aircraft || ''}</td>
-                <td>${booking.instructor || ''}</td>
+                <td>${aircraftName}</td>
+                <td>${instructorName}</td>
                 <td><span class="badge ${statusClass}">${statusText}</span></td>
                 <td>
                     ${booking.status !== 'cancelled' ? `
@@ -667,8 +676,8 @@ function initializeCalendar() {
         events: bookings.map(booking => ({
             id: booking.id,
             title: `${booking.aircraft} - ${booking.instructor}`,
-            start: booking.start_time,
-            end: booking.end_time,
+            start: new Date(booking.start_time),  // Convert to local Date object
+            end: new Date(booking.end_time),      // Convert to local Date object
             backgroundColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
             borderColor: booking.status === 'cancelled' ? '#dc3545' : '#198754',
             textColor: '#fff'
@@ -699,7 +708,8 @@ function initializeCalendar() {
         slotMaxTime: '22:00:00',
         allDaySlot: false,
         nowIndicator: true,
-        scrollTime: '08:00:00'
+        scrollTime: '08:00:00',
+        timeZone: 'local'  // Explicitly set to local timezone
     });
     calendar.render();
 }
@@ -764,9 +774,13 @@ function editBooking(id) {
     const booking = bookings.find(b => b.id === id);
     if (!booking) return;
     
+    // Convert UTC dates to local datetime-local input format
+    const startDate = new Date(booking.start_time);
+    const endDate = new Date(booking.end_time);
+    
     document.getElementById('editBookingId').value = booking.id;
-    document.getElementById('editStartTime').value = booking.start_time.slice(0, 16);
-    document.getElementById('editEndTime').value = booking.end_time.slice(0, 16);
+    document.getElementById('editStartTime').value = startDate.toISOString().slice(0, 16);
+    document.getElementById('editEndTime').value = endDate.toISOString().slice(0, 16);
     document.getElementById('editAircraftSelect').value = booking.aircraft_id || '';
     document.getElementById('editInstructorSelect').value = booking.instructor_id || '';
     
@@ -774,16 +788,21 @@ function editBooking(id) {
 }
 
 async function saveBooking() {
+    // Get the datetime values
     const startTime = document.getElementById('startTime').value;
     const endTime = document.getElementById('endTime').value;
-    const aircraftId = document.getElementById('aircraftSelect').value;
-    const instructorId = document.getElementById('instructorSelect').value;
+    const aircraftId = selectedAircraft;
+    const instructorId = selectedInstructor;
+    
+    // Create local datetime objects
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
     
     const data = {
-        start_time: startTime,
-        end_time: endTime,
-        aircraft_id: parseInt(aircraftId),
-        instructor_id: parseInt(instructorId)
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        aircraft_id: aircraftId,
+        instructor_id: instructorId
     };
     
     try {
@@ -823,6 +842,9 @@ async function loadData() {
         // Display bookings and initialize calendar
         displayBookings();
         initializeCalendar();
+        
+        // Also refresh availability
+        await checkAvailabilityAndBook(false);
         
     } catch (error) {
         console.error('Error loading data:', error);
