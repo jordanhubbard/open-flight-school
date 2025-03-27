@@ -1,4 +1,4 @@
-.PHONY: build up down logs test clean db-reset init test-data
+.PHONY: build up down logs test clean db-reset init test-data local-clean local-dev local-init local-test-data
 
 # Build the containers
 build:
@@ -87,3 +87,56 @@ restart:
 # View logs for a specific service
 service-logs:
 	docker compose logs -f $(service)
+
+# Clean local development files
+local-clean:
+	rm -rf venv
+	rm -rf __pycache__ */__pycache__ */*/__pycache__
+	rm -rf instance
+	rm -rf migrations
+	rm -f *.pyc */*.pyc */*/*.pyc
+	rm -f *.sqlite *.sqlite3 *.db
+
+# Initialize local virtual environment
+local-venv:
+	python3 -m venv venv
+	. venv/bin/activate && pip install -r requirements.txt
+
+# Initialize local database and migrations
+local-init:
+	. venv/bin/activate && \
+	flask db init && \
+	flask db migrate -m "Initial migration" && \
+	flask db upgrade
+
+# Load test data locally
+local-test-data:
+	. venv/bin/activate && python load_test_data.py
+
+# Setup and run local development environment
+local-dev: local-clean local-venv
+	@if [ ! -f .env ]; then \
+		echo "Creating default .env file..."; \
+		echo "SECRET_KEY=local-dev-key" > .env; \
+		echo "FLASK_APP=app.py" >> .env; \
+		echo "FLASK_ENV=development" >> .env; \
+		echo "DATABASE_URL=sqlite:///flight_school.db" >> .env; \
+		echo "MAIL_SERVER=localhost" >> .env; \
+		echo "MAIL_PORT=1025" >> .env; \
+		echo "MAIL_USE_TLS=False" >> .env; \
+		echo "MAIL_USERNAME=test" >> .env; \
+		echo "MAIL_PASSWORD=test" >> .env; \
+		echo "BASE_URL=http://localhost:5001" >> .env; \
+	fi
+	@echo "Setting up local development environment..."
+	@echo "1. Virtual environment and dependencies installed"
+	@make local-init
+	@echo "2. Database initialized"
+	@make local-test-data
+	@echo "3. Test data loaded"
+	@echo "\nStarting Flask development server..."
+	. venv/bin/activate && flask run --port 5001
+
+# Run tests locally
+local-test:
+	. venv/bin/activate && python -m pytest
