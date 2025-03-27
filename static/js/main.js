@@ -621,6 +621,29 @@ document.addEventListener('DOMContentLoaded', function() {
         loadAvailableInstructors();
         getBookings();
     }
+
+    // Set default date and time for booking
+    const bookingDate = document.getElementById('bookingDate');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const durationSelect = document.getElementById('durationSelect');
+    
+    if (bookingDate && startTimeInput) {
+        // Set today's date as default
+        const today = new Date();
+        bookingDate.value = formatDateForInput(today);
+        
+        // Set current time rounded to next 15 minutes as default
+        const roundedTime = roundToNearest15Minutes(new Date());
+        startTimeInput.value = formatTimeForInput(roundedTime);
+        
+        // Calculate initial end time
+        updateEndTime();
+        
+        // Add event listeners for time updates
+        startTimeInput.addEventListener('change', updateEndTime);
+        durationSelect.addEventListener('change', updateEndTime);
+        bookingDate.addEventListener('change', updateEndTime);
+    }
 });
 
 // Aircraft Management
@@ -1083,4 +1106,44 @@ document.addEventListener('DOMContentLoaded', function() {
     popoverTriggerList.map(function (popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl);
     });
-}); 
+});
+
+// Time handling functions
+function roundToNearest15Minutes(date) {
+    const minutes = date.getMinutes();
+    const roundedMinutes = Math.ceil(minutes / 15) * 15;
+    date.setMinutes(roundedMinutes);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+    return date;
+}
+
+function formatTimeForInput(date) {
+    return date.toTimeString().substring(0, 5);
+}
+
+function formatDateForInput(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function calculateEndTime(startTime, durationHours) {
+    const endTime = new Date(startTime);
+    endTime.setMinutes(endTime.getMinutes() + (durationHours * 60));
+    return endTime;
+}
+
+function updateEndTime() {
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    const durationSelect = document.getElementById('durationSelect');
+    const bookingDate = document.getElementById('bookingDate');
+
+    if (startTimeInput.value && durationSelect.value && bookingDate.value) {
+        const [hours, minutes] = startTimeInput.value.split(':');
+        const startTime = new Date(bookingDate.value);
+        startTime.setHours(parseInt(hours), parseInt(minutes));
+        
+        const endTime = calculateEndTime(startTime, parseFloat(durationSelect.value));
+        endTimeInput.value = formatTimeForInput(endTime);
+    }
+} 
