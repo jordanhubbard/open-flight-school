@@ -51,7 +51,7 @@ else:
     app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
     app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
-app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5000')
+app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5001')
 
 # Initialize extensions
 db.init_app(app)
