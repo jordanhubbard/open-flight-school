@@ -31,11 +31,13 @@ def load_test_data():
 
         # Create instructors
         for instructor_data in test_data['instructors']:
+            # Filter out any invalid ratings
+            valid_ratings = [r for r in instructor_data['ratings'] if r in Instructor.VALID_RATINGS]
             instructor = Instructor(
                 name=instructor_data['name'],
                 email=instructor_data['email'],
                 phone=instructor_data['phone'],
-                ratings=','.join(instructor_data['ratings'])
+                ratings=','.join(valid_ratings)  # Join valid ratings with commas
             )
             db.session.add(instructor)
 

@@ -85,49 +85,49 @@
             "name": "Michael Brown",
             "email": "michael@example.com",
             "phone": "555-0201",
-            "ratings": "CFI, CFII, MEI"
+            "ratings": ["CFI", "CFII", "MEI"]
         },
         {
             "name": "Lisa Anderson",
             "email": "lisa@example.com",
             "phone": "555-0202",
-            "ratings": "CFI, CFII"
+            "ratings": ["CFI", "CFII"]
         },
         {
             "name": "William Martinez",
             "email": "william@example.com",
             "phone": "555-0203",
-            "ratings": "CFI, MEI"
+            "ratings": ["CFI", "MEI"]
         },
         {
             "name": "Sarah Thompson",
             "email": "sarah@example.com",
             "phone": "555-0204",
-            "ratings": "CFI, CFII, MEI"
+            "ratings": ["CFI", "CFII", "MEI", "AGI"]
         },
         {
             "name": "David Wilson",
             "email": "david@example.com",
             "phone": "555-0205",
-            "ratings": "CFI"
+            "ratings": ["CFI", "IGI"]
         },
         {
             "name": "Emily Davis",
             "email": "emily@example.com",
             "phone": "555-0206",
-            "ratings": "CFI, CFII"
+            "ratings": ["CFI", "CFII", "BGI"]
         },
         {
             "name": "James Taylor",
             "email": "james@example.com",
             "phone": "555-0207",
-            "ratings": "CFI, MEI"
+            "ratings": ["CFI", "MEI", "AGI"]
         },
         {
             "name": "Jennifer White",
             "email": "jennifer@example.com",
             "phone": "555-0208",
-            "ratings": "CFI, CFII, MEI"
+            "ratings": ["CFI", "CFII", "MEI", "IGI"]
         }
     ],
     "bookings": [

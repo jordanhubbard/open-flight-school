@@ -66,7 +66,8 @@ class Aircraft(db.Model):
             'tail_number': self.tail_number,
             'make_model': self.make_model,
             'type': self.type,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'available': True
         }
 
 class Instructor(db.Model):
@@ -78,14 +79,47 @@ class Instructor(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     bookings = db.relationship('Booking', backref='instructor', lazy=True)
 
+    # Valid ratings according to 14 CFR Part 61
+    VALID_RATINGS = {
+        'CFI',   # Certified Flight Instructor (Part 61.183)
+        'CFII',  # Certified Flight Instructor Instrument (Part 61.183(e))
+        'MEI',   # Multi-Engine Instructor (Part 61.183(c))
+        'AGI',   # Advanced Ground Instructor (Part 61.215)
+        'BGI',   # Basic Ground Instructor (Part 61.213)
+        'IGI',   # Instrument Ground Instructor (Part 61.215)
+        'CFIS',  # Flight Instructor Sport (Part 61.409)
+        'CFIG'   # Flight Instructor Glider (Part 61.183(f))
+    }
+
+    @property
+    def ratings_list(self):
+        """Convert stored ratings string to list, validating against 14 CFR Part 61 ratings"""
+        if not self.ratings:
+            return []
+        # Split by comma, strip whitespace, convert to uppercase, and filter only valid ratings
+        return [r.strip().upper() for r in self.ratings.split(',') 
+                if r.strip().upper() in self.VALID_RATINGS]
+
+    @ratings_list.setter
+    def ratings_list(self, ratings):
+        """Set ratings from a list, validating against 14 CFR Part 61 ratings"""
+        if not ratings:
+            self.ratings = ''
+        else:
+            # Convert to uppercase, filter only valid ratings
+            valid_ratings = [r.strip().upper() for r in ratings 
+                           if isinstance(r, str) and r.strip().upper() in self.VALID_RATINGS]
+            self.ratings = ','.join(valid_ratings)
+
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
             'phone': self.phone,
-            'credentials': self.ratings,
-            'created_at': self.created_at.isoformat()
+            'ratings': self.ratings_list,
+            'created_at': self.created_at.isoformat(),
+            'available': True
         }
 
 class Booking(db.Model):

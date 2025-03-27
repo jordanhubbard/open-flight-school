@@ -721,11 +721,19 @@ function showAddAircraftModal() {
 // Instructor Management
 async function saveInstructor() {
     const form = document.getElementById('instructorForm');
+    
+    // Get ratings input and convert to array, filtering out invalid ones
+    const ratingsInput = document.getElementById('instructorRatings').value;
+    const ratings = ratingsInput
+        .split(',')
+        .map(r => r.trim())
+        .filter(r => r.length >= 2);  // Only keep ratings that are at least 2 chars
+    
     const data = {
         name: document.getElementById('instructorName').value,
         email: document.getElementById('instructorEmail').value,
         phone: document.getElementById('instructorPhone').value,
-        ratings: document.getElementById('ratings').value
+        ratings: ratings  // Send as array
     };
     
     try {
@@ -762,12 +770,16 @@ async function loadInstructors() {
             
             instructors.forEach(i => {
                 const row = document.createElement('tr');
+                // Create badges for each rating
+                const ratingBadges = Array.isArray(i.ratings) && i.ratings.length > 0
+                    ? i.ratings.map(rating => `<span class="badge bg-secondary me-1">${rating}</span>`).join('')
+                    : '<span class="text-muted">No ratings</span>';
+                
                 row.innerHTML = `
                     <td>${i.name}</td>
                     <td>${i.email}</td>
                     <td>${i.phone}</td>
-                    <td>${i.ratings || 'No ratings'}</td>
-                    <td>${i.available ? 'Available' : 'Unavailable'}</td>
+                    <td>${ratingBadges}</td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="editInstructor(${i.id})">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteInstructor(${i.id})">Delete</button>

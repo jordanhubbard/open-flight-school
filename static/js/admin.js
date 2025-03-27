@@ -52,21 +52,28 @@ function displayAircraft() {
 }
 
 function displayInstructors() {
-    const tableBody = document.querySelector('#instructorsTableBody');
-    if (!tableBody) return;
+    const tbody = document.getElementById('instructorsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = instructorData.map(instructor => {
+        // Convert ratings string to array and create badges
+        const ratingBadges = instructor.ratings ? instructor.ratings.split(',').map(rating => 
+            `<span class="badge bg-secondary me-1">${rating.trim()}</span>`
+        ).join('') : '<span class="text-muted">N/A</span>';
 
-    tableBody.innerHTML = instructorData.map(instructor => `
-        <tr>
-            <td>${instructor.name}</td>
-            <td>${instructor.email}</td>
-            <td>${instructor.phone || ''}</td>
-            <td>${instructor.ratings || ''}</td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="editInstructor(${instructor.id})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteInstructor(${instructor.id})">Delete</button>
-            </td>
-        </tr>
-    `).join('');
+        return `
+            <tr>
+                <td>${instructor.name}</td>
+                <td>${instructor.email}</td>
+                <td>${instructor.phone}</td>
+                <td>${ratingBadges}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editInstructor(${instructor.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteInstructor(${instructor.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function displayUsers() {

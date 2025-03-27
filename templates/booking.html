@@ -117,7 +117,7 @@
                                         <th>NAME</th>
                                         <th>EMAIL</th>
                                         <th>PHONE</th>
-                                        <th>CREDENTIALS</th>
+                                        <th>RATINGS</th>
                                     </tr>
                                 </thead>
                                 <tbody id="instructorsTableBody">
@@ -334,54 +334,82 @@
     }
 </style>
 <script>
-let bookings = [];
+// Global variables
 let aircraft = [];
 let instructors = [];
 let selectedAircraft = null;
 let selectedInstructor = null;
 
-// Set default date to today and default time to now
-document.addEventListener('DOMContentLoaded', function() {
-    const now = new Date();
+// Booking page functionality
+async function loadAvailableAircraft() {
+    try {
+        const response = await fetch('/api/available-aircraft');
+        if (!response.ok) {
+            throw new Error('Failed to load available aircraft');
+        }
+        aircraft = await response.json();
+        console.log('Loaded aircraft:', aircraft); // Debug log
+        displayAircraft();
+    } catch (error) {
+        console.error('Error loading aircraft:', error);
+        showError('An error occurred while loading aircraft');
+    }
+}
+
+async function loadAvailableInstructors() {
+    try {
+        const response = await fetch('/api/available-instructors');
+        if (!response.ok) {
+            throw new Error('Failed to load available instructors');
+        }
+        instructors = await response.json();
+        console.log('Loaded instructors:', instructors); // Debug log
+        displayInstructors();
+    } catch (error) {
+        console.error('Error loading instructors:', error);
+        showError('An error occurred while loading instructors');
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('DOM loaded, initializing...'); // Debug log
     
-    // Set default date in local time
-    const dateInput = document.getElementById('bookingDate');
-    const localDate = now.toLocaleDateString('en-CA'); // YYYY-MM-DD format
-    dateInput.value = localDate;
-    dateInput.min = localDate;
+    // Load initial data
+    await Promise.all([
+        loadAvailableAircraft(),
+        loadAvailableInstructors()
+    ]);
     
-    // Set default start time (current time rounded to next 15 minutes) in local time
+    // Set default date and time for booking
+    const bookingDate = document.getElementById('bookingDate');
     const startTimeInput = document.getElementById('startTimeInput');
-    const minutes = Math.ceil(now.getMinutes() / 15) * 15;
-    now.setMinutes(minutes, 0, 0);
-    const hours = String(now.getHours()).padStart(2, '0');
-    const mins = String(minutes).padStart(2, '0');
-    startTimeInput.value = `${hours}:${mins}`;
-    
-    // Set default duration to 1 hour
     const durationSelect = document.getElementById('durationSelect');
-    durationSelect.value = "1";
     
-    // Calculate and set default end time
-    updateEndTime();
-    
-    // Add event listeners for all time-related fields
-    dateInput.addEventListener('change', checkAvailabilityOnChange);
-    startTimeInput.addEventListener('change', () => {
+    if (bookingDate && startTimeInput) {
+        // Set today's date as default
+        const today = new Date();
+        bookingDate.value = formatDateForInput(today);
+        
+        // Set current time rounded to next 15 minutes as default
+        const roundedTime = roundToNearest15Minutes(new Date());
+        startTimeInput.value = formatTimeForInput(roundedTime);
+        
+        // Calculate initial end time
         updateEndTime();
-        checkAvailabilityOnChange();
-    });
-    durationSelect.addEventListener('change', () => {
-        updateEndTime();
-        checkAvailabilityOnChange();
-    });
-    
-    // Initial availability check
-    checkAvailabilityAndBook();
+        
+        // Add event listeners for time updates
+        startTimeInput.addEventListener('change', updateEndTime);
+        durationSelect.addEventListener('change', updateEndTime);
+        bookingDate.addEventListener('change', updateEndTime);
+    }
 
     // Setup table navigation
     setupTableNavigation('aircraftTableScroll', 'aircraftScrollUp', 'aircraftScrollDown');
     setupTableNavigation('instructorsTableScroll', 'instructorsScrollUp', 'instructorsScrollDown');
+    
+    // Initial availability check
+    await checkAvailabilityAndBook(false);
 });
 
 function updateEndTime() {
@@ -470,6 +498,11 @@ function displayAircraft() {
     const tableBody = document.querySelector('#aircraftTableBody');
     if (!tableBody) return;
 
+    if (!aircraft || aircraft.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No aircraft available</td></tr>';
+        return;
+    }
+
     tableBody.innerHTML = aircraft.map(a => `
         <tr class="${selectedAircraft === a.id ? 'selected-row' : ''} ${!a.available ? 'text-muted' : ''}" 
             onclick="${a.available ? `selectAircraft(${a.id}, this)` : ''}" 
@@ -500,21 +533,33 @@ function displayInstructors() {
     const tableBody = document.querySelector('#instructorsTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = instructors.map(i => `
-        <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
-            onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
-            style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
-            <td>
-                <input type="radio" name="instructor" value="${i.id}" 
-                    ${selectedInstructor === i.id ? 'checked' : ''}
-                    ${!i.available ? 'disabled' : ''}>
-            </td>
-            <td>${i.name}</td>
-            <td>${i.email}</td>
-            <td>${i.phone}</td>
-            <td>${i.credentials || 'N/A'}</td>
-        </tr>
-    `).join('');
+    if (!instructors || instructors.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No instructors available</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = instructors.map(i => {
+        // Create badges from ratings array - each rating is a complete string
+        const ratingBadges = Array.isArray(i.ratings) && i.ratings.length > 0 
+            ? i.ratings.map(rating => `<span class="badge bg-secondary me-1">${rating.trim()}</span>`).join('') 
+            : '<span class="text-muted">N/A</span>';
+
+        return `
+            <tr class="${selectedInstructor === i.id ? 'selected-row' : ''} ${!i.available ? 'text-muted' : ''}" 
+                onclick="${i.available ? `selectInstructor(${i.id}, this)` : ''}" 
+                style="cursor: ${i.available ? 'pointer' : 'not-allowed'}">
+                <td>
+                    <input type="radio" name="instructor" value="${i.id}" 
+                        ${selectedInstructor === i.id ? 'checked' : ''}
+                        ${!i.available ? 'disabled' : ''}>
+                </td>
+                <td>${i.name}</td>
+                <td>${i.email}</td>
+                <td>${i.phone}</td>
+                <td>${ratingBadges}</td>
+            </tr>
+        `;
+    }).join('');
 
     // Add click event listeners to the rows
     tableBody.querySelectorAll('tr').forEach(row => {

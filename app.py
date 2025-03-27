@@ -562,14 +562,26 @@ def bookings_redirect():
 @app.route('/api/available-aircraft', methods=['GET'])
 @login_required
 def get_available_aircraft():
-    aircraft = Aircraft.query.all()
-    return jsonify([a.to_dict() for a in aircraft])
+    try:
+        # Get all aircraft
+        aircraft = Aircraft.query.all()
+        logger.info(f"Returning {len(aircraft)} aircraft")
+        return jsonify([a.to_dict() for a in aircraft])
+    except Exception as e:
+        logger.error(f"Error in get_available_aircraft: {str(e)}")
+        return jsonify({'error': 'Failed to get available aircraft'}), 500
 
 @app.route('/api/available-instructors', methods=['GET'])
 @login_required
 def get_available_instructors():
-    instructors = Instructor.query.all()
-    return jsonify([i.to_dict() for i in instructors])
+    try:
+        # Get all instructors
+        instructors = Instructor.query.all()
+        logger.info(f"Returning {len(instructors)} instructors")
+        return jsonify([i.to_dict() for i in instructors])
+    except Exception as e:
+        logger.error(f"Error in get_available_instructors: {str(e)}")
+        return jsonify({'error': 'Failed to get available instructors'}), 500
 
 @app.route('/api/bookings/calendar', methods=['GET'])
 @login_required
@@ -634,7 +646,7 @@ def check_availability():
         'name': i.name,
         'email': i.email,
         'phone': i.phone,
-        'credentials': i.ratings,
+        'ratings': i.ratings.split(',') if i.ratings else [],
         'available': i.id not in booked_instructor_ids
     } for i in all_instructors]
     
