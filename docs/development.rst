@@ -6,20 +6,21 @@ This guide provides detailed information about the development workflow, tools, 
 Development Environment
 ---------------------
 
-The project uses a virtual environment to isolate dependencies. The development environment is managed through Make targets:
+The project uses Docker Compose for consistent development, testing, and production environments. The development environment is managed through Make targets:
 
 1. **Initial Setup**
    ::
 
-     make env        # Create .env file from template
-     make setup      # Set up the complete development environment
+     make build        # Build Docker containers
+     make init         # Initialize the database
+     make test-data    # Load test data
 
 2. **Running the Application**
    ::
 
-     make dev       # Run the Flask development server
-     make test      # Run the test suite
-     make check     # Run all code quality checks
+     make run         # Start the application
+     make test        # Run the test suite
+     make clean       # Clean up containers and temporary files
 
 Code Quality Tools
 ----------------
@@ -48,37 +49,40 @@ The project uses several tools to maintain code quality:
 Database Management
 -----------------
 
-The application uses SQLite for development and testing. Database operations are managed through Flask-Migrate:
+The application uses PostgreSQL for all environments. Database operations are managed through Flask-Migrate:
 
-1. **Creating Migrations**
-   ::
-
-     make migrate message="description of changes"
-
-2. **Applying Migrations**
+1. **Initializing the Database**
    ::
 
      make init
 
-3. **Resetting Database**
-   ::
+   This will:
+   - Create the database
+   - Run migrations
+   - Set up required extensions
 
-     make reset-db
-
-4. **Loading Test Data**
+2. **Loading Test Data**
    ::
 
      make test-data
 
+3. **Cleaning Up**
+   ::
+
+     make clean
+
+   This will remove containers, volumes, and temporary files.
+
 Development Workflow
 -----------------
 
-1. **Starting a New Feature**
+1. **Starting Development**
    ::
 
-     make env              # Ensure .env is set up
-     make setup           # Set up development environment
-     make dev            # Start the development server
+     make build        # Build containers
+     make init         # Initialize database
+     make test-data    # Load test data
+     make run         # Start the application
 
 2. **Making Changes**
    - Write code following the project's style guide
@@ -100,9 +104,9 @@ Development Workflow
 5. **Pre-commit Checklist**
    ::
 
-     make check          # Run all checks
-     make coverage       # Check test coverage
-     make docs          # Build documentation
+     make test        # Run tests
+     make lint        # Check code style
+     make docs        # Build documentation
 
 Best Practices
 ------------
@@ -143,8 +147,9 @@ Troubleshooting
 Common issues and solutions:
 
 1. **Database Issues**
-   - Reset the database: ``make reset-db``
-   - Check migrations: ``flask db current``
+   - Reset containers: ``make clean``
+   - Reinitialize: ``make init``
+   - Check logs: ``make logs``
    - Verify database URL in .env
 
 2. **Test Failures**
@@ -157,10 +162,10 @@ Common issues and solutions:
    - Rebuild: ``make docs``
    - Check Sphinx warnings
 
-4. **Environment Issues**
-   - Clean environment: ``make clean``
-   - Recreate venv: ``make venv``
-   - Verify .env configuration
+4. **Container Issues**
+   - Check container status: ``make status``
+   - View logs: ``make logs``
+   - Restart containers: ``make clean && make run``
 
 Getting Help
 ----------
@@ -177,4 +182,5 @@ Additional Resources
 - `SQLAlchemy Documentation <https://docs.sqlalchemy.org/>`_
 - `Pytest Documentation <https://docs.pytest.org/>`_
 - `Black Documentation <https://black.readthedocs.io/>`_
-- `Sphinx Documentation <https://www.sphinx-doc.org/>`_ 
+- `Sphinx Documentation <https://www.sphinx-doc.org/>`_
+- `Docker Compose Documentation <https://docs.docker.com/compose/>`_ 

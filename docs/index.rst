@@ -7,30 +7,25 @@ Getting Started
 --------------
 
 1. Clone the repository
-2. Create a virtual environment and install dependencies:
+2. Build the containers:
    ::
 
-     make venv
+     make build
 
-3. Create and configure your environment file:
-   ::
-
-     make env
-
-4. Initialize the database:
+3. Initialize the database:
    ::
 
      make init
 
-5. Load test data:
+4. Load test data:
    ::
 
      make test-data
 
-6. Run the application:
+5. Run the application:
    ::
 
-     make dev
+     make run
 
 Development Workflow
 ------------------
@@ -46,22 +41,18 @@ The application uses several development tools to maintain code quality:
 For a complete check of the codebase, run:
 ::
 
-  make check
+  make test && make lint && make docs
 
-This will run linting, formatting, and tests.
+This will run tests, linting, and build documentation.
 
 Database Management
 -----------------
 
-- Create a new migration:
-  ::
+The application uses PostgreSQL for all environments. Database operations are managed through Docker Compose:
 
-    make migrate message="your migration message"
-
-- Reset the database:
-  ::
-
-    make reset-db
+- Initialize database: ``make init``
+- Load test data: ``make test-data``
+- Clean up: ``make clean``
 
 Contents
 --------
