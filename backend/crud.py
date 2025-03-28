@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import datetime
-from . import models, schemas
+from passlib.context import CryptContext
+import models, schemas
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # User CRUD operations
 def get_user(db: Session, user_id: int):
@@ -14,7 +17,10 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(**user.dict())
+    hashed_password = pwd_context.hash(user.password)
+    user_data = user.dict()
+    user_data.pop("password")  # Remove password from dict
+    db_user = models.User(hashed_password=hashed_password, **user_data)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -22,6 +28,8 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def update_user(db: Session, user_id: int, user: schemas.UserCreate):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
     for key, value in user.dict().items():
         setattr(db_user, key, value)
     db.commit()
@@ -30,6 +38,8 @@ def update_user(db: Session, user_id: int, user: schemas.UserCreate):
 
 def delete_user(db: Session, user_id: int):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
     db.delete(db_user)
     db.commit()
     return db_user
@@ -53,6 +63,8 @@ def create_aircraft(db: Session, aircraft: schemas.AircraftCreate):
 
 def update_aircraft(db: Session, aircraft_id: int, aircraft: schemas.AircraftCreate):
     db_aircraft = db.query(models.Aircraft).filter(models.Aircraft.id == aircraft_id).first()
+    if db_aircraft is None:
+        return None
     for key, value in aircraft.dict().items():
         setattr(db_aircraft, key, value)
     db.commit()
@@ -61,6 +73,8 @@ def update_aircraft(db: Session, aircraft_id: int, aircraft: schemas.AircraftCre
 
 def delete_aircraft(db: Session, aircraft_id: int):
     db_aircraft = db.query(models.Aircraft).filter(models.Aircraft.id == aircraft_id).first()
+    if db_aircraft is None:
+        return None
     db.delete(db_aircraft)
     db.commit()
     return db_aircraft
@@ -84,6 +98,8 @@ def create_instructor(db: Session, instructor: schemas.InstructorCreate):
 
 def update_instructor(db: Session, instructor_id: int, instructor: schemas.InstructorCreate):
     db_instructor = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    if db_instructor is None:
+        return None
     for key, value in instructor.dict().items():
         setattr(db_instructor, key, value)
     db.commit()
@@ -92,6 +108,8 @@ def update_instructor(db: Session, instructor_id: int, instructor: schemas.Instr
 
 def delete_instructor(db: Session, instructor_id: int):
     db_instructor = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    if db_instructor is None:
+        return None
     db.delete(db_instructor)
     db.commit()
     return db_instructor
@@ -112,6 +130,8 @@ def create_booking(db: Session, booking: schemas.BookingCreate):
 
 def update_booking(db: Session, booking_id: int, booking: schemas.BookingCreate):
     db_booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if db_booking is None:
+        return None
     for key, value in booking.dict().items():
         setattr(db_booking, key, value)
     db.commit()
@@ -120,6 +140,8 @@ def update_booking(db: Session, booking_id: int, booking: schemas.BookingCreate)
 
 def delete_booking(db: Session, booking_id: int):
     db_booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if db_booking is None:
+        return None
     db.delete(db_booking)
     db.commit()
     return db_booking 
