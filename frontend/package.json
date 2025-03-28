@@ -1,0 +1,21 @@
+{
+  "name": "open-flight-school-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Open Flight School",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4",
+    "css-loader": "^6.10.0",
+    "style-loader": "^3.3.4"
+  }
+} 

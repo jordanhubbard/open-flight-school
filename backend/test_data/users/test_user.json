@@ -1,0 +1,14 @@
+{
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "phone": "1234567890",
+    "address": "123 Test St",
+    "medical_class": "Class 1",
+    "medical_expiry": "2023-12-31T00:00:00",
+    "ratings": "Private Pilot",
+    "endorsements": "None",
+    "flight_reviews": "None",
+    "currency": "Current",
+    "notes": "Test notes",
+    "password": "testpassword"
+} 

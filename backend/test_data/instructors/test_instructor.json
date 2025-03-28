@@ -1,0 +1,11 @@
+{
+    "name": "Test Instructor",
+    "email": "instructor@example.com",
+    "phone": "0987654321",
+    "ratings": "CFI",
+    "endorsements": "None",
+    "flight_reviews": "None",
+    "currency": "Current",
+    "availability": "Full-time",
+    "notes": "Test instructor"
+} 

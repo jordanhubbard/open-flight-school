@@ -1,0 +1,9 @@
+{
+    "student_id": 1,
+    "instructor_id": 1,
+    "aircraft_id": 1,
+    "start_time": "2023-12-31T10:00:00",
+    "end_time": "2023-12-31T12:00:00",
+    "status": "Scheduled",
+    "notes": "Test booking"
+} 

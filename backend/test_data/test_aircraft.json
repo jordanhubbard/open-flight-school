@@ -1,0 +1,11 @@
+{
+    "registration": "N12345",
+    "make_model": "Cessna 172",
+    "year": 2020,
+    "serial_number": "12345",
+    "total_time": 1000,
+    "last_maintenance": "2023-01-01T00:00:00",
+    "next_maintenance": "2024-01-01T00:00:00",
+    "status": "Available",
+    "notes": "Test aircraft"
+} 
