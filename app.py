@@ -4,13 +4,13 @@ from flask_mail import Message, Mail
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from flask_login import LoginManager
 import logging
 import sys
 import bcrypt
 from functools import wraps
 from models import User, Aircraft, Instructor, Booking
 from extensions import db, login_manager, mail, migrate
+from werkzeug.security import generate_password_hash
 
 # Configure logging
 logging.basicConfig(
@@ -23,51 +23,53 @@ logger = logging.getLogger('__main__')
 # Ensure logger captures all messages
 logger.setLevel(logging.INFO)
 
-load_dotenv()
+def create_app():
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    
+    load_dotenv()
+    
+    # Set testing mode
+    app.config['TESTING'] = os.getenv('TESTING', 'False').lower() == 'true'
+    
+    # Basic configuration
+    app.config.update(
+        SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key-please-change-in-production'),
+        SQLALCHEMY_DATABASE_URI=os.getenv('TEST_DATABASE_URL' if app.config['TESTING'] else 'DATABASE_URL',
+                                        'postgresql://postgres:postgres@db:5432/flight_school_test' if app.config['TESTING']
+                                        else 'postgresql://postgres:postgres@db:5432/flight_school'),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SESSION_TYPE='filesystem',
+        MAIL_SERVER=os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
+        MAIL_PORT=int(os.getenv('MAIL_PORT', 587)),
+        MAIL_USE_TLS=True,
+        MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+        MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+        MAIL_DEFAULT_SENDER=os.getenv('MAIL_USERNAME'),
+        MAIL_SUPPRESS_SEND=app.config.get('TESTING', False),
+        BASE_URL=os.getenv('BASE_URL', 'http://localhost:5001')
+    )
+    
+    # Session configuration
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    
+    # Initialize extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    mail.init_app(app)
+    migrate.init_app(app, db)
+    
+    # Configure login manager
+    login_manager.login_view = 'login_page'
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
+    
+    return app
 
-app = Flask(__name__)
-
-# Set testing mode
-app.config['TESTING'] = os.getenv('TESTING', 'False').lower() == 'true'
-
-# Basic configuration
-app.config.update(
-    SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key-please-change-in-production'),
-    SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/flight_school'),
-    SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    SESSION_TYPE='filesystem',
-    MAIL_SERVER=os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
-    MAIL_PORT=int(os.getenv('MAIL_PORT', 587)),
-    MAIL_USE_TLS=True,
-    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
-    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
-    MAIL_DEFAULT_SENDER=os.getenv('MAIL_USERNAME'),
-    MAIL_SUPPRESS_SEND=app.config.get('TESTING', False),
-    BASE_URL=os.getenv('BASE_URL', 'http://localhost:5001')
-)
-
-# Session configuration
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
-app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF
-
-# Initialize extensions
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login_page'
-login_manager.login_message = 'Please log in to access this page.'
-login_manager.login_message_category = 'info'
-mail = Mail(app)
-
-# Initialize database
-with app.app_context():
-    init_db()
-
-@login_manager.user_loader
-def load_user(user_id):
-    logger.debug(f"Loading user with ID: {user_id}")
-    return User.get_by_id(int(user_id))
+app = create_app()
 
 def check_session_timeout():
     if current_user.is_authenticated:
@@ -101,7 +103,7 @@ def admin_required(f):
 def home():
     if current_user.is_authenticated:
         # Redirect admin users to admin dashboard, regular users to booking page
-        return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('booking_page'))
+        return redirect(url_for('admin_dashboard') if current_user.role == 'admin' else url_for('booking_page'))
     logger.debug("Rendering index page")
     return render_template('home.html', title='Welcome to Open Flight School')
 
@@ -110,7 +112,7 @@ def login_page():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        user = User.get_by_email(email)
+        user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
             flash('Welcome back!', 'success')
@@ -135,15 +137,19 @@ def register_page():
             flash('Passwords do not match', 'error')
             return redirect(url_for('register_page'))
         
-        if User.get_by_email(email):
+        if User.query.filter_by(email=email).first():
             flash('Email already registered', 'error')
             return redirect(url_for('register_page'))
         
-        user = User.create(
+        user = User(
             username=username,
             email=email,
-            password=password
+            password=generate_password_hash(password),
+            role='student'
         )
+        db.session.add(user)
+        db.session.commit()
+        
         flash('Registration successful', 'success')
         return redirect(url_for('login_page'))
     
@@ -169,14 +175,17 @@ def register():
     if not all([username, email, password]):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    if User.get_by_email(email):
+    if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 400
     
-    user = User.create(
+    user = User(
         username=username,
         email=email,
-        password=password
+        password=generate_password_hash(password),
+        role='student'
     )
+    db.session.add(user)
+    db.session.commit()
     
     return jsonify({'message': 'User registered successfully', 'user_id': user.id}), 201
 
@@ -192,7 +201,7 @@ def login():
     if not all([email, password]):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    user = User.get_by_email(email)
+    user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid email or password'}), 401
     

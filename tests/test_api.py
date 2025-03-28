@@ -1,16 +1,12 @@
 import pytest
-from app import app
-from database import User, Aircraft, Instructor, Booking
+from app import create_app
+from models import User, Aircraft, Instructor, Booking
+from extensions import db
 from datetime import datetime, timedelta
 import json
 import os
 import logging
-import io
-import sys
-
-# Set testing mode before importing app
-os.environ['FLASK_ENV'] = 'testing'
-os.environ['TESTING'] = 'true'
+from werkzeug.security import generate_password_hash
 
 # Configure logging for tests
 logger = logging.getLogger('__main__')
@@ -22,77 +18,99 @@ def capture_logs(caplog):
     return caplog
 
 @pytest.fixture
-def app_context():
-    app.testing = True
-    app.config['TESTING'] = True
-    app.config['MAIL_SUPPRESS_SEND'] = True
-    app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
-    app.config['MAIL_SERVER'] = 'localhost'
-    app.config['MAIL_PORT'] = 25
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USERNAME'] = None
-    app.config['MAIL_PASSWORD'] = None
+def app():
+    """Create and configure a new app instance for each test."""
+    app = create_app()
+    
+    app.config.update({
+        'TESTING': True,
+        'SQLALCHEMY_DATABASE_URI': os.getenv('TEST_DATABASE_URL', 'postgresql://postgres:postgres@db:5432/flight_school_test'),
+        'MAIL_SUPPRESS_SEND': True,
+        'MAIL_DEFAULT_SENDER': 'test@example.com',
+        'MAIL_SERVER': 'localhost',
+        'MAIL_PORT': 25,
+        'MAIL_USE_TLS': False,
+        'MAIL_USERNAME': None,
+        'MAIL_PASSWORD': None,
+        'WTF_CSRF_ENABLED': False
+    })
     
     with app.app_context():
-        yield
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
-    
-    with app.test_client() as client:
-        with app.app_context():
-            yield client
+def client(app):
+    """Create a test client for the app."""
+    return app.test_client()
 
 @pytest.fixture
-def test_user():
-    user = User.create(
+def test_user(app):
+    """Create a test user."""
+    user = User(
         username='testuser',
         email='test@example.com',
-        password='password123',
+        password=generate_password_hash('password123'),
         role='student'
     )
+    db.session.add(user)
+    db.session.commit()
     return user
 
 @pytest.fixture
-def test_admin():
-    admin = User.create(
+def test_admin(app):
+    """Create a test admin user."""
+    admin = User(
         username='admin',
         email='admin@example.com',
-        password='admin123',
+        password=generate_password_hash('admin123'),
         role='admin'
     )
+    db.session.add(admin)
+    db.session.commit()
     return admin
 
 @pytest.fixture
-def test_aircraft():
-    aircraft = Aircraft.create(
+def test_aircraft(app):
+    """Create a test aircraft."""
+    aircraft = Aircraft(
         tail_number='N12345',
         make_model='Cessna 172',
-        type_='Single Engine'
+        aircraft_type='Single Engine',
+        status='available'
     )
+    db.session.add(aircraft)
+    db.session.commit()
     return aircraft
 
 @pytest.fixture
-def test_instructor():
-    instructor = Instructor.create(
+def test_instructor(app):
+    """Create a test instructor."""
+    instructor = Instructor(
         name='John Doe',
         email='john@example.com',
         phone='123-456-7890',
         ratings='CFI,CFII,MEI'
     )
+    db.session.add(instructor)
+    db.session.commit()
     return instructor
 
 @pytest.fixture
-def test_booking(test_user, test_aircraft, test_instructor):
-    booking = Booking.create(
-        user_id=test_user['id'],
-        aircraft_id=test_aircraft['id'],
-        instructor_id=test_instructor['id'],
+def test_booking(app, test_user, test_aircraft, test_instructor):
+    """Create a test booking."""
+    booking = Booking(
+        user_id=test_user.id,
+        aircraft_id=test_aircraft.id,
+        instructor_id=test_instructor.id,
         start_time=datetime.utcnow(),
-        end_time=datetime.utcnow() + timedelta(hours=1)
+        end_time=datetime.utcnow() + timedelta(hours=1),
+        status='confirmed'
     )
+    db.session.add(booking)
+    db.session.commit()
     return booking
 
 def test_register(client):
@@ -120,135 +138,81 @@ def test_login(client):
     assert response.status_code == 200
     assert 'message' in response.json
 
-def test_get_bookings(client):
+def test_get_bookings(client, test_user, test_aircraft, test_instructor):
     # Login first
-    client.post('/api/register', json={
-        'username': 'testuser',
-        'email': 'test@example.com',
-        'password': 'test123'
-    })
     client.post('/api/login', json={
-        'email': 'test@example.com',
-        'password': 'test123'
+        'email': test_user.email,
+        'password': 'password123'
     })
-    
-    # Create test aircraft and instructor
-    aircraft = Aircraft.create(
-        tail_number='N12346',
-        make_model='Cessna 172',
-        type_='Single Engine'
-    )
-    instructor = Instructor.create(
-        name='Test Instructor 1',
-        email='instructor1@example.com',
-        phone='555-0125',
-        ratings='CFI'
-    )
     
     # Create a test booking
-    booking = Booking.create(
+    booking = Booking(
+        user_id=test_user.id,
+        aircraft_id=test_aircraft.id,
+        instructor_id=test_instructor.id,
         start_time=datetime.utcnow() + timedelta(days=1),
         end_time=datetime.utcnow() + timedelta(days=1, hours=2),
-        user_id=1,
-        aircraft_id=aircraft['id'],
-        instructor_id=instructor['id']
+        status='confirmed'
     )
+    db.session.add(booking)
+    db.session.commit()
     
     response = client.get('/api/bookings')
     assert response.status_code == 200
 
-def test_create_booking(client, capture_logs):
+def test_create_booking(client, test_user, test_aircraft, test_instructor, capture_logs):
     # Login first
-    client.post('/api/register', json={
-        'username': 'testuser',
-        'email': 'test@example.com',
-        'password': 'test123'
-    })
     client.post('/api/login', json={
-        'email': 'test@example.com',
-        'password': 'test123'
+        'email': test_user.email,
+        'password': 'password123'
     })
-    
-    # Create test aircraft and instructor
-    aircraft = Aircraft.create(
-        tail_number='N12347',
-        make_model='Cessna 172',
-        type_='Single Engine'
-    )
-    instructor = Instructor.create(
-        name='Test Instructor 2',
-        email='instructor2@example.com',
-        phone='555-0126',
-        ratings='CFI'
-    )
     
     # Create a test booking
     response = client.post('/api/bookings', json={
         'start_time': (datetime.utcnow() + timedelta(days=1)).isoformat(),
         'end_time': (datetime.utcnow() + timedelta(days=1, hours=2)).isoformat(),
-        'aircraft_id': aircraft['id'],
-        'instructor_id': instructor['id']
+        'aircraft_id': test_aircraft.id,
+        'instructor_id': test_instructor.id
     })
     assert response.status_code == 201
     assert 'booking_id' in response.json
 
-def test_password_reset(client, capture_logs):
-    # First register a user
-    client.post('/api/register', json={
-        'username': 'testuser',
-        'email': 'test@example.com',
-        'password': 'test123'
-    })
-    
+def test_password_reset(client, test_user, capture_logs):
     # Request password reset
     response = client.post('/api/request-password-reset', json={
-        'email': 'test@example.com'
+        'email': test_user.email
     })
     assert response.status_code == 200
     assert 'message' in response.json
 
-def test_booking_conflicts(client):
+def test_booking_conflicts(client, test_user, test_aircraft, test_instructor):
     # Login first
-    client.post('/api/register', json={
-        'username': 'testuser',
-        'email': 'test@example.com',
-        'password': 'test123'
-    })
     client.post('/api/login', json={
-        'email': 'test@example.com',
-        'password': 'test123'
+        'email': test_user.email,
+        'password': 'password123'
     })
-    
-    # Create test aircraft and instructor
-    aircraft = Aircraft.create(
-        tail_number='N12348',
-        make_model='Cessna 172',
-        type_='Single Engine'
-    )
-    instructor = Instructor.create(
-        name='Test Instructor 3',
-        email='instructor3@example.com',
-        phone='555-0127',
-        ratings='CFI'
-    )
     
     # Create first booking
     start_time = datetime.utcnow() + timedelta(days=1)
     end_time = start_time + timedelta(hours=2)
-    Booking.create(
+    
+    booking1 = Booking(
+        user_id=test_user.id,
+        aircraft_id=test_aircraft.id,
+        instructor_id=test_instructor.id,
         start_time=start_time,
         end_time=end_time,
-        user_id=1,
-        aircraft_id=aircraft['id'],
-        instructor_id=instructor['id']
+        status='confirmed'
     )
+    db.session.add(booking1)
+    db.session.commit()
     
     # Try to create conflicting booking
     response = client.post('/api/bookings', json={
-        'start_time': start_time.isoformat(),
-        'end_time': end_time.isoformat(),
-        'aircraft_id': aircraft['id'],
-        'instructor_id': instructor['id']
+        'start_time': (start_time + timedelta(hours=1)).isoformat(),
+        'end_time': (end_time + timedelta(hours=1)).isoformat(),
+        'aircraft_id': test_aircraft.id,
+        'instructor_id': test_instructor.id
     })
     assert response.status_code == 400
     assert 'error' in response.json
