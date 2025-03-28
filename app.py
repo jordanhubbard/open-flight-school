@@ -26,7 +26,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///flight_school.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/flight_school')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration
@@ -36,20 +36,13 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to coo
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF
 
 # Email configuration
-if app.config.get('TESTING'):
-    app.config['MAIL_SUPPRESS_SEND'] = True
-    app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
-    app.config['MAIL_SERVER'] = 'localhost'
-    app.config['MAIL_PORT'] = 25
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USERNAME'] = None
-    app.config['MAIL_PASSWORD'] = None
-else:
-    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_SUPPRESS_SEND'] = app.config.get('TESTING', False)
 
 app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5001')
 
