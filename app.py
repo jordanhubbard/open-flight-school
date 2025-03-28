@@ -9,8 +9,8 @@ import logging
 import sys
 import bcrypt
 from functools import wraps
-from database import User, Aircraft, Instructor, Booking, init_db, get_db
-from werkzeug.security import generate_password_hash, check_password_hash
+from models import User, Aircraft, Instructor, Booking
+from extensions import db, login_manager, mail, migrate
 
 # Configure logging
 logging.basicConfig(
@@ -32,29 +32,25 @@ app.config['TESTING'] = os.getenv('TESTING', 'False').lower() == 'true'
 
 # Basic configuration
 app.config.update(
-    SECRET_KEY='dev',
-    DATABASE='test.db' if app.config['TESTING'] else os.path.join('instance', 'flight_school.db'),
+    SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key-please-change-in-production'),
+    SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/flight_school'),
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SESSION_TYPE='filesystem',
-    MAIL_SERVER='localhost' if app.config['TESTING'] else 'smtp.gmail.com',
-    MAIL_PORT=25 if app.config['TESTING'] else 587,
-    MAIL_USE_TLS=False if app.config['TESTING'] else True,
-    MAIL_USERNAME=None if app.config['TESTING'] else os.environ.get('MAIL_USERNAME'),
-    MAIL_PASSWORD=None if app.config['TESTING'] else os.environ.get('MAIL_PASSWORD'),
-    MAIL_DEFAULT_SENDER='test@example.com' if app.config['TESTING'] else os.environ.get('MAIL_DEFAULT_SENDER'),
-    MAIL_SUPPRESS_SEND=True if app.config['TESTING'] else False
+    MAIL_SERVER=os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
+    MAIL_PORT=int(os.getenv('MAIL_PORT', 587)),
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+    MAIL_DEFAULT_SENDER=os.getenv('MAIL_USERNAME'),
+    MAIL_SUPPRESS_SEND=app.config.get('TESTING', False),
+    BASE_URL=os.getenv('BASE_URL', 'http://localhost:5001')
 )
-
-# Create instance directory if not in testing mode
-if not app.config['TESTING']:
-    os.makedirs('instance', exist_ok=True)
 
 # Session configuration
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to cookies
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF
-
-app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5001')
 
 # Initialize extensions
 login_manager = LoginManager()
