@@ -1,83 +1,78 @@
 {
     "users": [
         {
-            "first_name": "Admin",
-            "last_name": "User",
+            "username": "admin",
             "email": "admin@example.com",
             "password": "admin123",
-            "is_admin": true
+            "role": "admin"
         },
         {
-            "first_name": "John",
-            "last_name": "Doe",
+            "username": "john",
             "email": "john@example.com",
             "password": "password123",
-            "address": "123 Main St",
-            "phone": "555-0101",
-            "credit_card": "4111111111111111",
-            "is_admin": false
+            "role": "student"
         },
         {
-            "first_name": "Jane",
-            "last_name": "Smith",
+            "username": "jane",
             "email": "jane@example.com",
             "password": "password456",
-            "address": "456 Oak Ave",
-            "phone": "555-0102",
-            "credit_card": "4111111111111112",
-            "is_admin": false
+            "role": "student"
         },
         {
-            "first_name": "Bob",
-            "last_name": "Johnson",
+            "username": "bob",
             "email": "bob@example.com",
             "password": "password789",
-            "address": "789 Pine Rd",
-            "phone": "555-0103",
-            "credit_card": "4111111111111113",
-            "is_admin": false
+            "role": "student"
         }
     ],
     "aircraft": [
         {
             "tail_number": "N12345",
             "make_model": "Cessna 172",
-            "type": "Single Engine"
+            "aircraft_type": "Single Engine",
+            "status": "available"
         },
         {
             "tail_number": "N67890",
             "make_model": "Piper PA-28",
-            "type": "Single Engine"
+            "aircraft_type": "Single Engine",
+            "status": "available"
         },
         {
             "tail_number": "N11223",
             "make_model": "Diamond DA40",
-            "type": "Single Engine"
+            "aircraft_type": "Single Engine",
+            "status": "available"
         },
         {
             "tail_number": "N44556",
             "make_model": "Cirrus SR20",
-            "type": "Single Engine"
+            "aircraft_type": "Single Engine",
+            "status": "available"
         },
         {
             "tail_number": "N77889",
             "make_model": "Diamond DA42",
-            "type": "Multi Engine"
+            "aircraft_type": "Multi Engine",
+            "status": "available"
         },
         {
             "tail_number": "N99001",
             "make_model": "Beechcraft Baron",
-            "type": "Multi Engine"
+            "aircraft_type": "Multi Engine",
+            "status": "available"
         },
         {
             "tail_number": "N22334",
             "make_model": "Piper Seneca",
-            "type": "Multi Engine"
+            "aircraft_type": "Multi Engine",
+            "status": "available"
         },
         {
             "tail_number": "N55667",
             "make_model": "Cessna 310",
-            "type": "Multi Engine"
+            "aircraft_type": "Multi Engine",
+            "status": "available"
         }
     ],
     "instructors": [
@@ -85,49 +80,49 @@
             "name": "Michael Brown",
             "email": "michael@example.com",
             "phone": "555-0201",
-            "ratings": ["CFI", "CFII", "MEI"]
+            "ratings": "CFI,CFII,MEI"
         },
         {
             "name": "Lisa Anderson",
             "email": "lisa@example.com",
             "phone": "555-0202",
-            "ratings": ["CFI", "CFII"]
+            "ratings": "CFI,CFII"
         },
         {
             "name": "William Martinez",
             "email": "william@example.com",
             "phone": "555-0203",
-            "ratings": ["CFI", "MEI"]
+            "ratings": "CFI,MEI"
         },
         {
             "name": "Sarah Thompson",
             "email": "sarah@example.com",
             "phone": "555-0204",
-            "ratings": ["CFI", "CFII", "MEI", "AGI"]
+            "ratings": "CFI,CFII,MEI,AGI"
         },
         {
             "name": "David Wilson",
             "email": "david@example.com",
             "phone": "555-0205",
-            "ratings": ["CFI", "IGI"]
+            "ratings": "CFI,IGI"
         },
         {
             "name": "Emily Davis",
             "email": "emily@example.com",
             "phone": "555-0206",
-            "ratings": ["CFI", "CFII", "BGI"]
+            "ratings": "CFI,CFII,BGI"
         },
         {
             "name": "James Taylor",
             "email": "james@example.com",
             "phone": "555-0207",
-            "ratings": ["CFI", "MEI", "AGI"]
+            "ratings": "CFI,MEI,AGI"
         },
         {
             "name": "Jennifer White",
             "email": "jennifer@example.com",
             "phone": "555-0208",
-            "ratings": ["CFI", "CFII", "MEI", "IGI"]
+            "ratings": "CFI,CFII,MEI,IGI"
         }
     ],
     "bookings": [
