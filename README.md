@@ -1,75 +1,78 @@
-# Eyes Outside Flight School
+# Open Flight School
 
-A web application for managing flight school bookings, aircraft, and instructors.
+A web application for managing flight school operations, including aircraft scheduling, instructor management, and student bookings.
 
 ## Features
 
-- User registration and authentication
-- Aircraft and instructor management
-- Real-time booking system with conflict detection
-- Email notifications for booking confirmations
-- Admin dashboard for managing resources
-- Responsive design for all devices
+- User authentication and authorization
+- Aircraft management
+- Instructor management
+- Student booking system
+- Email notifications
+- Admin dashboard
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- pip (Python package manager)
-- make (for using the Makefile)
+- Docker and Docker Compose
+- Make
 
-## Installation
+## Getting Started
 
 1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/eyes-outside.git
-cd eyes-outside
-```
+   ```bash
+   git clone https://github.com/yourusername/open-flight-school.git
+   cd open-flight-school
+   ```
 
-2. Create a virtual environment and install dependencies:
-```bash
-make setup
-```
+2. Create a `.env` file from the template:
+   ```bash
+   cp .env.example .env
+   ```
 
-3. Create a `.env` file in the project root with the following variables:
-```
-SECRET_KEY=your-secret-key
-DATABASE_URL=sqlite:///flight_school.db
-MAIL_SERVER=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-specific-password
-```
+3. Update the `.env` file with your configuration:
+   ```bash
+   # Database configuration
+   DATABASE_URL=postgresql://postgres:postgres@db:5432/flight_school
+   
+   # Email configuration
+   MAIL_SERVER=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USE_TLS=True
+   MAIL_USERNAME=your-email@gmail.com
+   MAIL_PASSWORD=your-app-specific-password
+   MAIL_DEFAULT_SENDER=your-email@gmail.com
+   ```
 
-## Running the Application
+4. Build and start the containers:
+   ```bash
+   make build
+   make init
+   make test-data
+   make run
+   ```
 
-1. Start the development server:
-```bash
-make run
-```
+5. Access the application at http://localhost:5000
 
-2. Open your web browser and navigate to `http://localhost:5000`
+## Development
 
-## Testing
+### Running Tests
 
-Run the test suite:
 ```bash
 make test
 ```
 
-## Development
+### Code Quality
 
-The project structure is organized as follows:
-
+```bash
+make lint
+make format
 ```
-eyes-outside/
-├── app.py              # Main application file
-├── models.py           # Database models
-├── init_db.py          # Database initialization script
-├── requirements.txt    # Python dependencies
-├── Makefile           # Build automation
-├── static/            # Static files (CSS, JS, images)
-├── templates/         # HTML templates
-└── tests/            # Test files
+
+### Documentation
+
+```bash
+make docs
+make serve-docs
 ```
 
 ## Contributing

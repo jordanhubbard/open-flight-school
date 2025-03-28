@@ -1,20 +1,30 @@
 import pytest
-from app import app
-from database import init_db, User, Aircraft, Instructor, Booking
+from app import create_app
+from models import db
 import os
 
 @pytest.fixture
-def client():
+def app():
+    """Create and configure a new app instance for each test."""
+    app = create_app()
     app.config['TESTING'] = True
-    app.config['DATABASE'] = 'test.db'
-    init_db()
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@db:5432/flight_school_test'
     
-    with app.test_client() as client:
-        yield client
-    
-    # Cleanup
-    if os.path.exists('test.db'):
-        os.remove('test.db')
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+@pytest.fixture
+def client(app):
+    """Create a test client for the app."""
+    return app.test_client()
+
+@pytest.fixture
+def runner(app):
+    """Create a test runner for the app's CLI commands."""
+    return app.test_cli_runner()
 
 def test_app_exists():
     assert app is not None
@@ -25,9 +35,9 @@ def test_app_is_testing():
 def test_app_has_secret_key():
     assert app.config['SECRET_KEY'] is not None
 
-def test_app_has_database():
-    assert app.config['DATABASE'] is not None
-    assert 'test.db' in app.config['DATABASE']
+def test_app_has_database(app):
+    """Test that the app has the correct database configuration."""
+    assert 'postgresql://postgres:postgres@db:5432/flight_school_test' in app.config['SQLALCHEMY_DATABASE_URI']
 
 def test_home_page(client):
     response = client.get('/')
