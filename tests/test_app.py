@@ -47,13 +47,14 @@ def test_register_page(client):
 def test_booking_page_requires_login(client):
     response = client.get('/booking')
     assert response.status_code == 302
-    assert response.location == '/login'
+    assert '/login?next=%2Fbooking' in response.location
 
 def test_register_user(client):
     response = client.post('/register', data={
         'username': 'testuser',
         'email': 'test@example.com',
-        'password': 'password123'
+        'password': 'password123',
+        'password_confirm': 'password123'
     }, follow_redirects=True)
     assert response.status_code == 200
     assert b'Registration successful' in response.data
@@ -63,7 +64,8 @@ def test_login_user(client):
     client.post('/register', data={
         'username': 'testuser',
         'email': 'test@example.com',
-        'password': 'password123'
+        'password': 'password123',
+        'password_confirm': 'password123'
     })
     
     # Then try to login
@@ -79,7 +81,8 @@ def test_logout_user(client):
     client.post('/register', data={
         'username': 'testuser',
         'email': 'test@example.com',
-        'password': 'password123'
+        'password': 'password123',
+        'password_confirm': 'password123'
     })
     client.post('/login', data={
         'email': 'test@example.com',

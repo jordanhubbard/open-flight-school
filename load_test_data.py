@@ -24,8 +24,7 @@ def load_test_data():
         Aircraft.create(
             make_model=aircraft_data['make_model'],
             tail_number=aircraft_data['tail_number'],
-            aircraft_type=aircraft_data['aircraft_type'],
-            status=aircraft_data['status']
+            type_=aircraft_data['aircraft_type']
         )
     
     # Create instructors

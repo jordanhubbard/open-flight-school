@@ -26,38 +26,33 @@ logger.setLevel(logging.INFO)
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
+
+# Set testing mode
 app.config['TESTING'] = os.getenv('TESTING', 'False').lower() == 'true'
 
-# Database configuration
-database_url = os.getenv('DATABASE_URL', 'sqlite:///instance/flight_school.db')
-if database_url.startswith('sqlite:///'):
-    # Ensure the instance folder exists
-    os.makedirs(os.path.dirname(os.path.abspath(database_url.replace('sqlite:///', ''))), exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Basic configuration
+app.config.update(
+    SECRET_KEY='dev',
+    DATABASE='test.db' if app.config['TESTING'] else os.path.join('instance', 'flight_school.db'),
+    SESSION_TYPE='filesystem',
+    MAIL_SERVER='localhost' if app.config['TESTING'] else 'smtp.gmail.com',
+    MAIL_PORT=25 if app.config['TESTING'] else 587,
+    MAIL_USE_TLS=False if app.config['TESTING'] else True,
+    MAIL_USERNAME=None if app.config['TESTING'] else os.environ.get('MAIL_USERNAME'),
+    MAIL_PASSWORD=None if app.config['TESTING'] else os.environ.get('MAIL_PASSWORD'),
+    MAIL_DEFAULT_SENDER='test@example.com' if app.config['TESTING'] else os.environ.get('MAIL_DEFAULT_SENDER'),
+    MAIL_SUPPRESS_SEND=True if app.config['TESTING'] else False
+)
+
+# Create instance directory if not in testing mode
+if not app.config['TESTING']:
+    os.makedirs('instance', exist_ok=True)
 
 # Session configuration
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to cookies
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF
-
-# Email configuration
-if app.config.get('TESTING'):
-    app.config['MAIL_SUPPRESS_SEND'] = True
-    app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
-    app.config['MAIL_SERVER'] = 'localhost'
-    app.config['MAIL_PORT'] = 25
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USERNAME'] = None
-    app.config['MAIL_PASSWORD'] = None
-else:
-    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5001')
 
@@ -76,20 +71,7 @@ with app.app_context():
 @login_manager.user_loader
 def load_user(user_id):
     logger.debug(f"Loading user with ID: {user_id}")
-    user_data = User.get_by_id(int(user_id))
-    if user_data:
-        # Create a UserMixin-compatible object
-        class UserObject:
-            def __init__(self, data):
-                self.id = data['id']
-                self.is_admin = data['is_admin']
-                self.is_authenticated = True
-                self.is_active = True
-                self.is_anonymous = False
-            def get_id(self):
-                return str(self.id)
-        return UserObject(user_data)
-    return None
+    return User.get_by_id(int(user_id))
 
 def check_session_timeout():
     if current_user.is_authenticated:
@@ -112,7 +94,7 @@ def before_request():
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
+        if not current_user.is_authenticated or current_user.role != 'admin':
             flash('You need administrator privileges to access this page.', 'danger')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
@@ -125,483 +107,270 @@ def home():
         # Redirect admin users to admin dashboard, regular users to booking page
         return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('booking_page'))
     logger.debug("Rendering index page")
-    return render_template('home.html')
+    return render_template('home.html', title='Welcome to Open Flight School')
 
-@app.route('/login', methods=['GET'])
+@app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    if current_user.is_authenticated:
-        # Redirect admin users to admin dashboard, regular users to booking page
-        return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('booking_page'))
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.get_by_email(email)
+        if user and user.check_password(password):
+            login_user(user)
+            flash('Welcome back!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('home'))
+        flash('Invalid email or password', 'error')
     return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register_page():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        
+        if not all([username, email, password, password_confirm]):
+            flash('All fields are required', 'error')
+            return redirect(url_for('register_page'))
+        
+        if password != password_confirm:
+            flash('Passwords do not match', 'error')
+            return redirect(url_for('register_page'))
+        
+        if User.get_by_email(email):
+            flash('Email already registered', 'error')
+            return redirect(url_for('register_page'))
+        
+        user = User.create(
+            username=username,
+            email=email,
+            password=password
+        )
+        flash('Registration successful', 'success')
+        return redirect(url_for('login_page'))
+    
+    return render_template('register.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    session.clear()
+    flash('You have been logged out', 'success')
     return redirect(url_for('home'))
 
 @app.route('/api/register', methods=['POST'])
 def register():
-    logger.debug("Registration request received")
     data = request.get_json()
-    logger.debug(f"Registration data: {data}")
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
-    if User.get_by_email(data['email']):
-        logger.debug(f"Email {data['email']} already registered")
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not all([username, email, password]):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    if User.get_by_email(email):
         return jsonify({'error': 'Email already registered'}), 400
     
-    try:
-        user_id = User.create(
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            email=data['email'],
-            password_hash=bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            is_admin=False
-        )
-        logger.debug(f"User {data['email']} registered successfully")
-        return jsonify({'message': 'Registration successful'}), 201
-    except Exception as e:
-        logger.error(f"Registration error: {str(e)}")
-        return jsonify({'error': 'Registration failed'}), 500
+    user = User.create(
+        username=username,
+        email=email,
+        password=password
+    )
+    
+    return jsonify({'message': 'User registered successfully', 'user_id': user.id}), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    logger.debug("Login request received")
     data = request.get_json()
-    logger.debug(f"Login attempt for email: {data['email']}")
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
-    user_data = User.get_by_email(data['email'])
-    if user_data and bcrypt.checkpw(data['password'].encode('utf-8'), user_data['password_hash'].encode('utf-8')):
-        # Create a UserMixin-compatible object
-        class UserObject:
-            def __init__(self, data):
-                self.id = data['id']
-                self.is_admin = data['is_admin']
-                self.is_authenticated = True
-                self.is_active = True
-                self.is_anonymous = False
-            def get_id(self):
-                return str(self.id)
-        
-        user = UserObject(user_data)
-        # Set up secure session
-        session.permanent = True
-        login_user(user)
-        logger.debug(f"User {data['email']} logged in successfully")
-        # Redirect admin users to admin dashboard, regular users to booking page
-        redirect_url = url_for('admin_dashboard') if user.is_admin else url_for('booking_page')
-        return jsonify({
-            'message': 'Login successful',
-            'redirect': redirect_url
-        })
+    email = data.get('email')
+    password = data.get('password')
     
-    logger.debug(f"Login failed for email: {data['email']}")
-    return jsonify({'error': 'Invalid email or password'}), 401
+    if not all([email, password]):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    user = User.get_by_email(email)
+    if not user or not user.check_password(password):
+        return jsonify({'error': 'Invalid email or password'}), 401
+    
+    login_user(user)
+    return jsonify({'message': 'Login successful', 'user_id': user.id}), 200
 
 @app.route('/api/bookings', methods=['GET'])
 @login_required
 def get_bookings():
     bookings = Booking.get_by_user(current_user.id)
-    return jsonify(bookings)
+    return jsonify([booking.to_dict() for booking in bookings]), 200
 
 @app.route('/api/bookings', methods=['POST'])
 @login_required
 def create_booking():
     data = request.get_json()
-    start_time = datetime.fromisoformat(data['start_time'])
-    end_time = datetime.fromisoformat(data['end_time'])
-    aircraft_id = data['aircraft_id']
-    instructor_id = data['instructor_id']
-
-    # Validate booking duration
-    duration = (end_time - start_time).total_seconds() / 3600
-    if duration < 1 or duration > 4:
-        return jsonify({'error': 'Booking duration must be between 1 and 4 hours'}), 400
-
-    # Check for conflicts
-    if not Booking.check_availability(start_time, end_time, aircraft_id, instructor_id):
-        return jsonify({'error': 'Selected time slot is not available'}), 400
-
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    try:
+        start_time = datetime.fromisoformat(data.get('start_time'))
+        end_time = datetime.fromisoformat(data.get('end_time'))
+        aircraft_id = data.get('aircraft_id')
+        instructor_id = data.get('instructor_id')
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid date format'}), 400
+    
+    if not all([start_time, end_time, aircraft_id, instructor_id]):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    if start_time >= end_time:
+        return jsonify({'error': 'Start time must be before end time'}), 400
+    
+    if Booking.check_conflicts(start_time, end_time, aircraft_id, instructor_id):
+        return jsonify({'error': 'Booking conflicts with existing booking'}), 409
+    
     booking = Booking.create(
-        user_id=current_user.id,
-        aircraft_id=aircraft_id,
-        instructor_id=instructor_id,
         start_time=start_time,
         end_time=end_time,
-        status='pending'
+        user_id=current_user.id,
+        aircraft_id=aircraft_id,
+        instructor_id=instructor_id
     )
-    return jsonify(booking)
-
-def send_confirmation_email(booking):
-    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
-        logger.warning("Email configuration not set, skipping confirmation email")
-        return
-        
-    msg = Message('Booking Confirmation',
-                  sender=app.config['MAIL_USERNAME'],
-                  recipients=[booking.user.email])
-    msg.body = f'''Your booking has been confirmed:
-    Start: {booking.start_time}
-    End: {booking.end_time}
-    Aircraft: {booking.aircraft.make_model if booking.aircraft else 'None'}
-    Instructor: {booking.instructor.name if booking.instructor else 'None'}
-    '''
     
-    if app.testing or app.config.get('TESTING', False):
-        logger.info(f"[TEST] Would send email:\nSubject: {msg.subject}\nTo: {msg.recipients}\n\n{msg.body}")
-    else:
-        try:
-            mail.send(msg)
-        except Exception as e:
-            logger.error(f"Failed to send email: {str(e)}")
-            # Don't re-raise the exception, just log it
+    return jsonify({'message': 'Booking created successfully', 'booking_id': booking.id}), 201
 
-def send_password_reset_email(user):
-    token = user.generate_reset_token()
-    reset_url = urljoin(app.config['BASE_URL'], url_for('reset_password', token=token, _external=True))
-    
+def send_reset_email(user, token):
+    reset_url = url_for('reset_password', token=token, _external=True)
     msg = Message('Password Reset Request',
-                  sender=app.config['MAIL_USERNAME'],
-                  recipients=[user.email])
+                 sender=app.config['MAIL_DEFAULT_SENDER'],
+                 recipients=[user.email])
     msg.body = f'''To reset your password, visit the following link:
 {reset_url}
 
-If you did not make this request then simply ignore this email.
+If you did not make this request then simply ignore this email and no changes will be made.
 '''
-    
-    if app.config.get('TESTING', False):
-        logger.info(f"[TEST] Would send email:\nSubject: {msg.subject}\nTo: {msg.recipients}\n\n{msg.body}")
-    else:
-        mail.send(msg)
+    mail.send(msg)
 
 @app.route('/api/request-password-reset', methods=['POST'])
 def request_password_reset():
     data = request.get_json()
-    user = User.query.filter_by(email=data['email']).first()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
-    if user:
-        send_password_reset_email(user)
-        return jsonify({'message': 'Password reset email sent'})
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
     
-    # Return success even if email doesn't exist to prevent email enumeration
-    return jsonify({'message': 'If the email exists, a password reset link has been sent'})
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({'message': 'If an account exists with that email, a password reset link will be sent.'}), 200
+    
+    token = User.generate_reset_token(user.id)
+    try:
+        send_reset_email(user, token)
+        return jsonify({'message': 'Password reset email sent'}), 200
+    except Exception as e:
+        logger.error(f'Failed to send reset email: {str(e)}')
+        return jsonify({'error': 'Failed to send reset email'}), 500
 
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
     data = request.get_json()
-    user = User.query.filter_by(reset_token=token).first()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
-    if not user or not user.is_reset_token_valid():
+    password = data.get('password')
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+    
+    user = User.verify_reset_token(token)
+    if not user:
         return jsonify({'error': 'Invalid or expired reset token'}), 400
     
-    user.set_password(data['password'])
-    user.reset_token = None
-    user.reset_token_expires = None
-    db.session.commit()
-    
-    return jsonify({'message': 'Password has been reset'})
-
-# Admin routes
-@app.route('/admin')
-@login_required
-@admin_required
-def admin_dashboard():
-    return render_template('admin/dashboard.html')
-
-@app.route('/api/admin/aircraft', methods=['GET'])
-@login_required
-@admin_required
-def get_all_aircraft():
-    aircraft = Aircraft.query.all()
-    return jsonify([{
-        'id': a.id,
-        'tail_number': a.tail_number,
-        'make_model': a.make_model,
-        'type': a.type
-    } for a in aircraft])
-
-@app.route('/api/admin/aircraft', methods=['POST'])
-@login_required
-@admin_required
-def create_aircraft():
-    data = request.get_json()
-    aircraft = Aircraft(
-        tail_number=data['tail_number'],
-        make_model=data['make_model'],
-        type=data['type']
-    )
-    db.session.add(aircraft)
-    db.session.commit()
-    return jsonify({
-        'id': aircraft.id,
-        'tail_number': aircraft.tail_number,
-        'make_model': aircraft.make_model,
-        'type': aircraft.type
-    }), 201
-
-@app.route('/api/admin/aircraft/<int:id>', methods=['PUT'])
-@login_required
-@admin_required
-def update_aircraft(id):
-    aircraft = Aircraft.query.get_or_404(id)
-    data = request.get_json()
-    aircraft.tail_number = data['tail_number']
-    aircraft.make_model = data['make_model']
-    aircraft.type = data['type']
-    db.session.commit()
-    return jsonify({
-        'id': aircraft.id,
-        'tail_number': aircraft.tail_number,
-        'make_model': aircraft.make_model,
-        'type': aircraft.type
-    })
-
-@app.route('/api/admin/aircraft/<int:id>', methods=['DELETE'])
-@login_required
-@admin_required
-def delete_aircraft(id):
-    aircraft = Aircraft.query.get_or_404(id)
-    db.session.delete(aircraft)
-    db.session.commit()
-    return jsonify({'message': 'Aircraft deleted successfully'})
-
-@app.route('/api/admin/aircraft/<int:id>', methods=['GET'])
-@login_required
-@admin_required
-def get_aircraft(id):
-    aircraft = Aircraft.query.get_or_404(id)
-    return jsonify({
-        'id': aircraft.id,
-        'tail_number': aircraft.tail_number,
-        'make_model': aircraft.make_model,
-        'type': aircraft.type
-    })
-
-@app.route('/api/admin/instructors', methods=['GET'])
-@login_required
-@admin_required
-def get_all_instructors():
-    instructors = Instructor.query.all()
-    return jsonify([{
-        'id': i.id,
-        'name': i.name,
-        'email': i.email,
-        'phone': i.phone,
-        'ratings': i.ratings.split(',') if i.ratings else []
-    } for i in instructors])
-
-@app.route('/api/admin/instructors', methods=['POST'])
-@login_required
-@admin_required
-def create_instructor():
-    data = request.get_json()
-    instructor = Instructor(
-        name=data['name'],
-        email=data['email'],
-        phone=data['phone'],
-        ratings=','.join(data['ratings']) if data.get('ratings') else ''
-    )
-    db.session.add(instructor)
-    db.session.commit()
-    return jsonify({
-        'id': instructor.id,
-        'name': instructor.name,
-        'email': instructor.email,
-        'phone': instructor.phone,
-        'ratings': instructor.ratings.split(',') if instructor.ratings else []
-    }), 201
-
-@app.route('/api/admin/instructors/<int:id>', methods=['PUT'])
-@login_required
-@admin_required
-def update_instructor(id):
-    instructor = Instructor.query.get_or_404(id)
-    data = request.get_json()
-    instructor.name = data['name']
-    instructor.email = data['email']
-    instructor.phone = data['phone']
-    instructor.ratings = ','.join(data['ratings']) if data.get('ratings') else ''
-    db.session.commit()
-    return jsonify({
-        'id': instructor.id,
-        'name': instructor.name,
-        'email': instructor.email,
-        'phone': instructor.phone,
-        'ratings': instructor.ratings.split(',') if instructor.ratings else []
-    })
-
-@app.route('/api/admin/instructors/<int:id>', methods=['DELETE'])
-@login_required
-@admin_required
-def delete_instructor(id):
-    instructor = Instructor.query.get_or_404(id)
-    db.session.delete(instructor)
-    db.session.commit()
-    return jsonify({'message': 'Instructor deleted successfully'})
-
-@app.route('/api/admin/users', methods=['GET'])
-@login_required
-@admin_required
-def get_all_users():
-    users = User.query.all()
-    return jsonify([{
-        'id': u.id,
-        'first_name': u.first_name,
-        'last_name': u.last_name,
-        'email': u.email,
-        'phone': u.phone,
-        'is_admin': u.is_admin,
-        'created_at': u.created_at.isoformat()
-    } for u in users])
-
-@app.route('/api/admin/users/<int:id>', methods=['PUT'])
-@login_required
-@admin_required
-def update_user_admin(id):
-    user = User.query.get_or_404(id)
-    data = request.get_json()
-    
-    user.first_name = data.get('first_name', user.first_name)
-    user.last_name = data.get('last_name', user.last_name)
-    user.email = data.get('email', user.email)
-    user.phone = data.get('phone', user.phone)
-    user.is_admin = data.get('is_admin', user.is_admin)
-    
-    if 'password' in data:
-        user.set_password(data['password'])
-    
-    db.session.commit()
-    return jsonify({'message': 'User updated successfully'})
-
-@app.route('/api/admin/bookings', methods=['GET'])
-@login_required
-@admin_required
-def get_all_bookings():
-    bookings = Booking.query.all()
-    return jsonify([{
-        'id': b.id,
-        'user': {
-            'id': b.user.id,
-            'name': f"{b.user.first_name} {b.user.last_name}"
-        },
-        'start_time': b.start_time.isoformat(),
-        'end_time': b.end_time.isoformat(),
-        'aircraft': b.aircraft.make_model if b.aircraft else None,
-        'instructor': b.instructor.name if b.instructor else None,
-        'status': b.status
-    } for b in bookings])
-
-@app.route('/api/bookings/<int:id>', methods=['PUT'])
-@login_required
-def update_booking(id):
-    booking = Booking.query.get_or_404(id)
-    
-    # Check if the booking belongs to the current user
-    if booking.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    # Only allow editing of non-cancelled bookings
-    if booking.status == 'cancelled':
-        return jsonify({'error': 'Cannot edit this booking'}), 400
-    
-    data = request.get_json()
-    
-    # Check for conflicts with other bookings
-    conflicts = Booking.query.filter(
-        Booking.id != id,
-        ((Booking.aircraft_id == data.get('aircraft_id', booking.aircraft_id)) | 
-         (Booking.instructor_id == data.get('instructor_id', booking.instructor_id))) &
-        ((Booking.start_time <= data.get('end_time', booking.end_time.isoformat())) & 
-         (Booking.end_time >= data.get('start_time', booking.start_time.isoformat())))
-    ).first()
-    
-    if conflicts:
-        return jsonify({'error': 'Time slot is not available'}), 400
-    
-    booking.start_time = datetime.fromisoformat(data.get('start_time', booking.start_time.isoformat()))
-    booking.end_time = datetime.fromisoformat(data.get('end_time', booking.end_time.isoformat()))
-    booking.aircraft_id = data.get('aircraft_id', booking.aircraft_id)
-    booking.instructor_id = data.get('instructor_id', booking.instructor_id)
-    
-    db.session.commit()
-    return jsonify({'message': 'Booking updated successfully'})
-
-@app.route('/api/admin/bookings/<int:id>', methods=['DELETE'])
-@login_required
-@admin_required
-def delete_booking(id):
-    booking = Booking.query.get_or_404(id)
-    db.session.delete(booking)
-    db.session.commit()
-    return jsonify({'message': 'Booking deleted successfully'})
+    User.update_password(user.id, password)
+    return jsonify({'message': 'Password has been reset'}), 200
 
 @app.route('/booking')
 @login_required
 def booking_page():
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard'))
-    # Get user's bookings
-    user_bookings = Booking.query.filter_by(user_id=current_user.id).all()
-    return render_template('booking.html', user_bookings=user_bookings)
+    return render_template('booking.html')
 
-@app.route('/bookings')
+@app.route('/admin')
 @login_required
-def bookings_redirect():
-    # Redirect admin users to admin dashboard
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard'))
-    return redirect(url_for('booking_page'))
+@admin_required
+def admin_dashboard():
+    return render_template('admin.html')
 
-@app.route('/api/aircraft/available', methods=['GET'])
+@app.route('/api/aircraft', methods=['GET'])
+@login_required
+def get_aircraft():
+    aircraft = Aircraft.get_all()
+    return jsonify(aircraft)
+
+@app.route('/api/instructors', methods=['GET'])
+@login_required
+def get_instructors():
+    instructors = Instructor.get_all()
+    return jsonify(instructors)
+
+@app.route('/api/available-aircraft', methods=['GET'])
 @login_required
 def get_available_aircraft():
     start_time = datetime.fromisoformat(request.args.get('start_time'))
     end_time = datetime.fromisoformat(request.args.get('end_time'))
     
+    # Get all aircraft
     aircraft = Aircraft.get_all()
-    available_aircraft = []
     
+    # Filter out aircraft with conflicts
+    available_aircraft = []
     for a in aircraft:
-        if Booking.check_availability(start_time, end_time, a['id']):
+        if Booking.check_availability(start_time, end_time, aircraft_id=a['id']):
             available_aircraft.append(a)
     
     return jsonify(available_aircraft)
 
-@app.route('/api/instructors/available', methods=['GET'])
+@app.route('/api/available-instructors', methods=['GET'])
 @login_required
 def get_available_instructors():
     start_time = datetime.fromisoformat(request.args.get('start_time'))
     end_time = datetime.fromisoformat(request.args.get('end_time'))
     
+    # Get all instructors
     instructors = Instructor.get_all()
-    available_instructors = []
     
+    # Filter out instructors with conflicts
+    available_instructors = []
     for i in instructors:
         if Booking.check_availability(start_time, end_time, instructor_id=i['id']):
             available_instructors.append(i)
     
     return jsonify(available_instructors)
 
-@app.route('/api/calendar/bookings', methods=['GET'])
+@app.route('/api/calendar-bookings', methods=['GET'])
 @login_required
 def get_calendar_bookings():
-    start_date = datetime.now()
+    start_date = datetime.utcnow()
     end_date = start_date + timedelta(days=30)
     
     bookings = Booking.get_by_date_range(start_date, end_date)
-    events = []
     
+    # Format bookings for calendar
+    calendar_events = []
     for booking in bookings:
-        events.append({
+        calendar_events.append({
             'id': booking['id'],
-            'title': f"{booking['aircraft_make_model']} - {booking['instructor_name']}",
+            'title': f"{booking['aircraft_name']} - {booking['instructor_name']}",
             'start': booking['start_time'],
             'end': booking['end_time'],
-            'backgroundColor': '#007bff' if booking['status'] == 'confirmed' else '#ffc107'
+            'status': booking['status']
         })
     
-    return jsonify(events)
+    return jsonify(calendar_events)
 
 @app.route('/api/check-availability', methods=['POST'])
 @login_required
@@ -612,92 +381,11 @@ def check_availability():
     aircraft_id = data.get('aircraft_id')
     instructor_id = data.get('instructor_id')
     
+    if not aircraft_id and not instructor_id:
+        return jsonify({'error': 'At least one of aircraft_id or instructor_id is required'}), 400
+    
     is_available = Booking.check_availability(start_time, end_time, aircraft_id, instructor_id)
     return jsonify({'available': is_available})
-
-@app.route('/account')
-@login_required
-def account():
-    return render_template('account.html')
-
-@app.route('/api/user', methods=['GET'])
-@login_required
-def get_user():
-    return jsonify({
-        'id': current_user.id,
-        'first_name': current_user.first_name,
-        'last_name': current_user.last_name,
-        'email': current_user.email,
-        'phone': current_user.phone,
-        'address': current_user.address,
-        'credit_card': current_user.credit_card,
-        'is_admin': current_user.is_admin
-    })
-
-@app.route('/api/user', methods=['PUT'])
-@login_required
-def update_user():
-    data = request.get_json()
-    
-    # Check if email is being changed and if it's already taken
-    if data.get('email') and data['email'] != current_user.email:
-        if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email already registered'}), 400
-    
-    # Update user fields
-    current_user.first_name = data.get('first_name', current_user.first_name)
-    current_user.last_name = data.get('last_name', current_user.last_name)
-    current_user.email = data.get('email', current_user.email)
-    current_user.phone = data.get('phone', current_user.phone)
-    current_user.address = data.get('address', current_user.address)
-    current_user.credit_card = data.get('credit_card', current_user.credit_card)
-    
-    # Update password if provided
-    if data.get('password'):
-        current_user.set_password(data['password'])
-    
-    try:
-        db.session.commit()
-        return jsonify({'message': 'User updated successfully'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/bookings/<int:id>/cancel', methods=['POST'])
-@login_required
-def cancel_booking(id):
-    booking = Booking.query.get_or_404(id)
-    
-    # Check if the booking belongs to the current user
-    if booking.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    # Only allow cancellation of non-cancelled bookings
-    if booking.status == 'cancelled':
-        return jsonify({'error': 'Cannot cancel this booking'}), 400
-    
-    booking.status = 'cancelled'
-    db.session.commit()
-    
-    return jsonify({'message': 'Booking cancelled successfully'})
-
-@app.route('/my-bookings')
-@login_required
-def my_bookings():
-    # Redirect admin users to admin dashboard
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard'))
-    return render_template('bookings.html')
-
-@app.route('/health')
-def health_check():
-    try:
-        # Try to query the database
-        User.query.first()
-        return jsonify({'status': 'healthy'}), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 

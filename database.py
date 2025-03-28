@@ -1,25 +1,35 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from contextlib import contextmanager
 
-DATABASE_PATH = os.path.join('instance', 'flight_school.db')
+def get_database_path():
+    """Get the database path based on the environment."""
+    if os.environ.get('TESTING'):
+        return 'test.db'
+    return os.path.join('instance', 'flight_school.db')
+
+DATABASE_PATH = get_database_path()
 
 def init_db():
     """Initialize the database by creating all tables."""
-    os.makedirs('instance', exist_ok=True)
+    if os.environ.get('TESTING'):
+        # For testing, we want to start with a fresh database
+        try:
+            os.remove(DATABASE_PATH)
+        except FileNotFoundError:
+            pass
+    else:
+        os.makedirs('instance', exist_ok=True)
+    
     with get_db() as db:
         db.executescript('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                first_name TEXT NOT NULL,
-                last_name TEXT NOT NULL,
+                username TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
-                password_hash TEXT,
-                address TEXT,
-                phone TEXT,
-                credit_card TEXT,
-                is_admin BOOLEAN DEFAULT 0,
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'student',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 reset_token TEXT UNIQUE,
                 reset_token_expires TIMESTAMP
@@ -29,7 +39,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 tail_number TEXT UNIQUE NOT NULL,
                 make_model TEXT NOT NULL,
-                type TEXT,
+                type_ TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -74,13 +84,42 @@ def dict_factory(cursor, row):
     return {key: value for key, value in zip(fields, row)}
 
 class User:
+    def __init__(self, data):
+        self.id = data['id']
+        self.username = data['username']
+        self.email = data['email']
+        self.password_hash = data['password_hash']
+        self.role = data['role']
+        self.created_at = data['created_at']
+        self.reset_token = data.get('reset_token')
+        self.reset_token_expires = data.get('reset_token_expires')
+        self.is_authenticated = True
+        self.is_active = True
+        self.is_anonymous = False
+
+    def get_id(self):
+        return str(self.id)
+
+    def check_password(self, password):
+        return self.password_hash == password  # TODO: Use proper password hashing
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'role': self.role,
+            'created_at': self.created_at
+        }
+
     @staticmethod
     def get_by_id(user_id):
         with get_db() as db:
             cursor = db.cursor()
             cursor.row_factory = dict_factory
             cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
-            return cursor.fetchone()
+            data = cursor.fetchone()
+            return User(data) if data else None
 
     @staticmethod
     def get_by_email(email):
@@ -88,18 +127,19 @@ class User:
             cursor = db.cursor()
             cursor.row_factory = dict_factory
             cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
-            return cursor.fetchone()
+            data = cursor.fetchone()
+            return User(data) if data else None
 
     @staticmethod
-    def create(first_name, last_name, email, password_hash, is_admin=False):
+    def create(username, email, password, role='student'):
         with get_db() as db:
             cursor = db.cursor()
             cursor.execute('''
-                INSERT INTO users (first_name, last_name, email, password_hash, is_admin)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (first_name, last_name, email, password_hash, is_admin))
+                INSERT INTO users (username, email, password_hash, role)
+                VALUES (?, ?, ?, ?)
+            ''', (username, email, password, role))
             db.commit()
-            return cursor.lastrowid
+            return User.get_by_id(cursor.lastrowid)
 
     @staticmethod
     def update(user_id, **kwargs):
@@ -116,155 +156,185 @@ class User:
             db.commit()
             return cursor.rowcount > 0
 
-class Aircraft:
     @staticmethod
-    def get_all():
+    def generate_reset_token(user_id):
+        token = os.urandom(32).hex()
+        expires = datetime.utcnow() + timedelta(hours=1)
+        User.update(user_id, reset_token=token, reset_token_expires=expires)
+        return token
+
+    @staticmethod
+    def verify_reset_token(token):
         with get_db() as db:
             cursor = db.cursor()
             cursor.row_factory = dict_factory
-            cursor.execute('SELECT * FROM aircraft')
-            return cursor.fetchall()
+            cursor.execute('''
+                SELECT id FROM users 
+                WHERE reset_token = ? AND reset_token_expires > ?
+            ''', (token, datetime.utcnow().isoformat()))
+            user = cursor.fetchone()
+            return User.get_by_id(user['id']) if user else None
 
+    @staticmethod
+    def update_password(user_id, password):
+        return User.update(user_id, password_hash=password)
+
+class Aircraft:
+    def __init__(self, data):
+        self.id = data['id']
+        self.make_model = data['make_model']
+        self.registration = data['registration']
+        self.hourly_rate = data['hourly_rate']
+        self.type_ = data.get('type_', 'Single Engine')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'make_model': self.make_model,
+            'registration': self.registration,
+            'hourly_rate': self.hourly_rate,
+            'type_': self.type_
+        }
+    
+    @staticmethod
+    def get_all():
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT * FROM aircraft')
+        aircraft = cursor.fetchall()
+        return [Aircraft(dict(a)) for a in aircraft]
+    
     @staticmethod
     def get_by_id(aircraft_id):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('SELECT * FROM aircraft WHERE id = ?', (aircraft_id,))
-            return cursor.fetchone()
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT * FROM aircraft WHERE id = ?', (aircraft_id,))
+        data = cursor.fetchone()
+        return Aircraft(dict(data)) if data else None
 
     @staticmethod
-    def create(tail_number, make_model, type_):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.execute('''
-                INSERT INTO aircraft (tail_number, make_model, type)
-                VALUES (?, ?, ?)
-            ''', (tail_number, make_model, type_))
-            db.commit()
-            return cursor.lastrowid
+    def create(tail_number, make_model, type_='Single Engine', hourly_rate=150.0):
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''
+            INSERT INTO aircraft (registration, make_model, type_, hourly_rate)
+            VALUES (?, ?, ?, ?)
+        ''', (tail_number, make_model, type_, hourly_rate))
+        aircraft_id = cursor.lastrowid
+        db.commit()
+        
+        cursor.execute('SELECT * FROM aircraft WHERE id = ?', (aircraft_id,))
+        data = cursor.fetchone()
+        return Aircraft(dict(data))
 
 class Instructor:
+    def __init__(self, data):
+        self.id = data['id']
+        self.name = data['name']
+        self.email = data['email']
+        self.hourly_rate = data['hourly_rate']
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'hourly_rate': self.hourly_rate
+        }
+    
     @staticmethod
     def get_all():
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('SELECT * FROM instructors')
-            return cursor.fetchall()
-
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT * FROM instructors')
+        instructors = cursor.fetchall()
+        return [Instructor(dict(i)) for i in instructors]
+    
     @staticmethod
     def get_by_id(instructor_id):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('SELECT * FROM instructors WHERE id = ?', (instructor_id,))
-            return cursor.fetchone()
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT * FROM instructors WHERE id = ?', (instructor_id,))
+        data = cursor.fetchone()
+        return Instructor(dict(data)) if data else None
 
     @staticmethod
-    def create(name, email, phone, ratings):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.execute('''
-                INSERT INTO instructors (name, email, phone, ratings)
-                VALUES (?, ?, ?, ?)
-            ''', (name, email, phone, ratings))
-            db.commit()
-            return cursor.lastrowid
+    def create(name, email, hourly_rate=75.0):
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''
+            INSERT INTO instructors (name, email, hourly_rate)
+            VALUES (?, ?, ?)
+        ''', (name, email, hourly_rate))
+        instructor_id = cursor.lastrowid
+        db.commit()
+        
+        cursor.execute('SELECT * FROM instructors WHERE id = ?', (instructor_id,))
+        data = cursor.fetchone()
+        return Instructor(dict(data))
 
 class Booking:
-    @staticmethod
-    def get_all():
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('''
-                SELECT b.*, u.first_name || ' ' || u.last_name as user_name,
-                       a.make_model as aircraft_name, i.name as instructor_name
-                FROM bookings b
-                LEFT JOIN users u ON b.user_id = u.id
-                LEFT JOIN aircraft a ON b.aircraft_id = a.id
-                LEFT JOIN instructors i ON b.instructor_id = i.id
-            ''')
-            return cursor.fetchall()
-
+    def __init__(self, data):
+        self.id = data['id']
+        self.user_id = data['user_id']
+        self.aircraft_id = data['aircraft_id']
+        self.instructor_id = data['instructor_id']
+        self.start_time = datetime.fromisoformat(data['start_time'])
+        self.end_time = datetime.fromisoformat(data['end_time'])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'aircraft_id': self.aircraft_id,
+            'instructor_id': self.instructor_id,
+            'start_time': self.start_time.isoformat(),
+            'end_time': self.end_time.isoformat()
+        }
+    
     @staticmethod
     def get_by_user(user_id):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('''
-                SELECT b.*, a.make_model as aircraft_name, i.name as instructor_name
-                FROM bookings b
-                LEFT JOIN aircraft a ON b.aircraft_id = a.id
-                LEFT JOIN instructors i ON b.instructor_id = i.id
-                WHERE b.user_id = ?
-            ''', (user_id,))
-            return cursor.fetchall()
-
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            'SELECT * FROM bookings WHERE user_id = ?',
+            (user_id,)
+        )
+        bookings = cursor.fetchall()
+        return [Booking(dict(booking)) for booking in bookings]
+    
     @staticmethod
-    def get_by_id(booking_id):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('''
-                SELECT b.*, a.make_model as aircraft_name, i.name as instructor_name
-                FROM bookings b
-                LEFT JOIN aircraft a ON b.aircraft_id = a.id
-                LEFT JOIN instructors i ON b.instructor_id = i.id
-                WHERE b.id = ?
-            ''', (booking_id,))
-            return cursor.fetchone()
-
+    def check_conflicts(start_time, end_time, aircraft_id, instructor_id):
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''
+            SELECT COUNT(*) FROM bookings 
+            WHERE (aircraft_id = ? OR instructor_id = ?)
+            AND (
+                (start_time <= ? AND end_time > ?) OR
+                (start_time < ? AND end_time >= ?) OR
+                (start_time >= ? AND end_time <= ?)
+            )
+        ''', (
+            aircraft_id, instructor_id,
+            start_time, start_time,
+            end_time, end_time,
+            start_time, end_time
+        ))
+        count = cursor.fetchone()[0]
+        return count > 0
+    
     @staticmethod
-    def get_by_date_range(start_date, end_date):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.row_factory = dict_factory
-            cursor.execute('''
-                SELECT b.*, a.make_model as aircraft_name, i.name as instructor_name
-                FROM bookings b
-                LEFT JOIN aircraft a ON b.aircraft_id = a.id
-                LEFT JOIN instructors i ON b.instructor_id = i.id
-                WHERE b.start_time >= ? AND b.start_time <= ?
-            ''', (start_date.isoformat(), end_date.isoformat()))
-            return cursor.fetchall()
-
-    @staticmethod
-    def create(start_time, end_time, user_id, aircraft_id, instructor_id):
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.execute('''
-                INSERT INTO bookings (start_time, end_time, user_id, aircraft_id, instructor_id)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (start_time.isoformat(), end_time.isoformat(), user_id, aircraft_id, instructor_id))
-            db.commit()
-            return cursor.lastrowid
-
-    @staticmethod
-    def check_conflicts(start_time, end_time, aircraft_id=None, instructor_id=None):
-        with get_db() as db:
-            cursor = db.cursor()
-            conditions = []
-            params = []
-            
-            if aircraft_id:
-                conditions.append('aircraft_id = ?')
-                params.append(aircraft_id)
-            if instructor_id:
-                conditions.append('instructor_id = ?')
-                params.append(instructor_id)
-                
-            where_clause = ' OR '.join(conditions)
-            query = f'''
-                SELECT COUNT(*) as count
-                FROM bookings
-                WHERE status != 'cancelled'
-                AND (({where_clause})
-                AND (start_time <= ? AND end_time >= ?))
-            '''
-            params.extend([end_time.isoformat(), start_time.isoformat()])
-            
-            cursor.execute(query, params)
-            result = cursor.fetchone()
-            return result['count'] > 0 
+    def create(user_id, aircraft_id, instructor_id, start_time, end_time):
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''
+            INSERT INTO bookings (user_id, aircraft_id, instructor_id, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, aircraft_id, instructor_id, start_time.isoformat(), end_time.isoformat()))
+        booking_id = cursor.lastrowid
+        db.commit()
+        
+        cursor.execute('SELECT * FROM bookings WHERE id = ?', (booking_id,))
+        booking_data = cursor.fetchone()
+        return Booking(dict(booking_data)) 
