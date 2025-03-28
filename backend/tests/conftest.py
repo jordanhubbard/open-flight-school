@@ -18,15 +18,21 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_db():
+    # Create all tables at the start of the test session
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Drop all tables at the end of the test session
+    Base.metadata.drop_all(bind=engine)
+
 @pytest.fixture(scope="function")
 def test_db():
-    Base.metadata.create_all(bind=engine)
     try:
         db = TestingSessionLocal()
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(scope="function")
 def client(test_db):
