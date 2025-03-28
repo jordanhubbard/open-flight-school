@@ -8,6 +8,7 @@ from database import SessionLocal, engine
 import models
 import schemas
 from config import settings
+from api import router
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -26,6 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API router
+app.include_router(router, prefix="/api/v1")
 
 # Dependency to get database session
 def get_db():

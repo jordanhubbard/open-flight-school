@@ -21,6 +21,8 @@ class User(Base):
     currency = Column(String)
     notes = Column(String)
 
+    bookings = relationship("Booking", back_populates="student")
+
 class Aircraft(Base):
     __tablename__ = "aircraft"
 
@@ -35,6 +37,8 @@ class Aircraft(Base):
     status = Column(String)
     notes = Column(String)
 
+    bookings = relationship("Booking", back_populates="aircraft")
+
 class Instructor(Base):
     __tablename__ = "instructors"
 
@@ -48,6 +52,8 @@ class Instructor(Base):
     currency = Column(String)
     availability = Column(String)
     notes = Column(String)
+
+    bookings = relationship("Booking", back_populates="instructor")
 
 class Booking(Base):
     __tablename__ = "bookings"
