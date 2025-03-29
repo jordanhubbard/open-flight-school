@@ -1,0 +1,112 @@
+{
+    "users": [
+        {
+            "email": "test@example.com",
+            "hashed_password": "hashed_password",
+            "full_name": "Test User",
+            "is_active": true,
+            "is_superuser": false,
+            "phone": "1234567890",
+            "address": "123 Test St",
+            "medical_class": "Class 1",
+            "medical_expiry": "2024-12-31T00:00:00",
+            "ratings": "Private Pilot",
+            "endorsements": "None",
+            "flight_reviews": "None",
+            "currency": "Current",
+            "notes": "Test notes"
+        },
+        {
+            "email": "instructor@example.com",
+            "hashed_password": "hashed_password",
+            "full_name": "Test Instructor",
+            "is_active": true,
+            "is_superuser": false,
+            "phone": "0987654321",
+            "address": "456 Test St",
+            "medical_class": "Class 1",
+            "medical_expiry": "2024-12-31T00:00:00",
+            "ratings": "CFI, CFII",
+            "endorsements": "Complex",
+            "flight_reviews": "Current",
+            "currency": "Current",
+            "notes": "Test instructor notes"
+        }
+    ],
+    "aircraft": [
+        {
+            "registration": "N12345",
+            "make_model": "Cessna 172",
+            "year": 2020,
+            "serial_number": "17201234",
+            "total_time": 1000,
+            "last_maintenance": "2023-12-01T00:00:00",
+            "next_maintenance": "2024-12-01T00:00:00",
+            "status": "Active",
+            "category": "airplane",
+            "class_type": "single-engine land",
+            "is_active": true,
+            "notes": "Test aircraft 1"
+        },
+        {
+            "registration": "N54321",
+            "make_model": "Piper PA-28",
+            "year": 2019,
+            "serial_number": "28201234",
+            "total_time": 1500,
+            "last_maintenance": "2023-11-01T00:00:00",
+            "next_maintenance": "2024-11-01T00:00:00",
+            "status": "Active",
+            "category": "airplane",
+            "class_type": "single-engine land",
+            "is_active": true,
+            "notes": "Test aircraft 2"
+        }
+    ],
+    "instructors": [
+        {
+            "full_name": "John Doe",
+            "email": "john@example.com",
+            "phone": "1234567890",
+            "ratings": "CFI, CFII, MEI",
+            "endorsements": "Complex, High Performance",
+            "flight_reviews": "Current",
+            "currency": "Current",
+            "availability": "Mon-Fri 9am-5pm",
+            "notes": "Test instructor 1"
+        },
+        {
+            "full_name": "Jane Smith",
+            "email": "jane@example.com",
+            "phone": "0987654321",
+            "ratings": "CFI, CFII",
+            "endorsements": "Complex",
+            "flight_reviews": "Current",
+            "currency": "Current",
+            "availability": "Weekends",
+            "notes": "Test instructor 2"
+        }
+    ],
+    "flights": [
+        {
+            "student_id": 1,
+            "instructor_id": 1,
+            "aircraft_id": 1,
+            "flight_type": "dual",
+            "status": "scheduled",
+            "start_time": "2024-03-20T10:00:00",
+            "end_time": "2024-03-20T11:00:00",
+            "notes": "Test flight 1"
+        },
+        {
+            "student_id": 1,
+            "instructor_id": 2,
+            "aircraft_id": 2,
+            "flight_type": "solo",
+            "status": "scheduled",
+            "start_time": "2024-03-21T10:00:00",
+            "end_time": "2024-03-21T11:00:00",
+            "notes": "Test flight 2"
+        }
+    ]
+} 

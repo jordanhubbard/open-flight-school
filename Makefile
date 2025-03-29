@@ -11,16 +11,18 @@ build:
 clean:
 	docker compose down -v --remove-orphans
 	docker compose rm -f
-	rm -rf __pycache__ */__pycache__ */*/__pycache__
-	rm -f *.pyc */*.pyc */*/*.pyc
-	rm -rf .pytest_cache
-	rm -rf .coverage
-	rm -rf htmlcov
-	rm -rf docs/_build
-	rm -rf frontend/node_modules
-	rm -rf frontend/dist
-	rm -rf frontend/.coverage
-	rm -rf frontend/coverage
+	find . -type d -name "__pycache__" -exec rm -r {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name "*.pyd" -delete
+	find . -type f -name ".coverage" -delete
+	find . -type d -name "*.egg-info" -exec rm -r {} +
+	find . -type d -name "*.egg" -exec rm -r {} +
+	find . -type d -name ".pytest_cache" -exec rm -r {} +
+	find . -type d -name ".coverage" -exec rm -r {} +
+	find . -type d -name "htmlcov" -exec rm -r {} +
+	find . -type d -name "node_modules" -exec rm -r {} +
+	find . -type f -name "*.log" -delete
 
 # Initialize the database with migrations
 init:
@@ -29,9 +31,9 @@ init:
 	docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
 	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;"
 	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-	docker compose run --rm backend flask db init || true
-	docker compose run --rm backend flask db migrate -m "Initial migration"
-	docker compose run --rm backend flask db upgrade
+	docker compose run --rm backend alembic init alembic || true
+	docker compose run --rm backend alembic revision --autogenerate -m "Initial migration"
+	docker compose run --rm backend alembic upgrade head
 
 # Run the application
 run:

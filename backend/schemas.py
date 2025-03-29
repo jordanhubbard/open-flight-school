@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
+from models import FlightType, FlightStatus
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -13,7 +14,7 @@ class UserBase(BaseModel):
     endorsements: str
     flight_reviews: str
     currency: str
-    notes: str
+    notes: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -24,7 +25,7 @@ class User(UserBase):
     is_superuser: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AircraftBase(BaseModel):
     registration: str
@@ -35,19 +36,22 @@ class AircraftBase(BaseModel):
     last_maintenance: datetime
     next_maintenance: datetime
     status: str
-    notes: str
+    category: str
+    class_type: str
+    notes: Optional[str] = None
 
 class AircraftCreate(AircraftBase):
     pass
 
 class Aircraft(AircraftBase):
     id: int
+    is_active: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class InstructorBase(BaseModel):
-    name: str
+    full_name: str
     email: EmailStr
     phone: str
     ratings: str
@@ -55,7 +59,7 @@ class InstructorBase(BaseModel):
     flight_reviews: str
     currency: str
     availability: str
-    notes: str
+    notes: Optional[str] = None
 
 class InstructorCreate(InstructorBase):
     pass
@@ -64,22 +68,23 @@ class Instructor(InstructorBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-class BookingBase(BaseModel):
+class FlightBase(BaseModel):
     student_id: int
     instructor_id: int
     aircraft_id: int
+    flight_type: FlightType
+    status: FlightStatus
     start_time: datetime
     end_time: datetime
-    status: str
-    notes: str
+    notes: Optional[str] = None
 
-class BookingCreate(BookingBase):
+class FlightCreate(FlightBase):
     pass
 
-class Booking(BookingBase):
+class Flight(FlightBase):
     id: int
 
     class Config:
-        orm_mode = True 
+        from_attributes = True 
