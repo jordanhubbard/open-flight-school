@@ -4,7 +4,8 @@ import os
 
 class Settings(BaseSettings):
     # Database settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/flight_school")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/flight_school")
+    TEST_DATABASE_URL: str = os.getenv("TEST_DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/test_db")
     
     # Security settings
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -16,5 +17,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "allow"  # Allow extra fields
 
-settings = Settings() 
+settings = Settings()
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL 

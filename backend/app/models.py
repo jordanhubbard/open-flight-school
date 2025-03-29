@@ -1,22 +1,21 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Float, Text
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
-
-Base = declarative_base()
+from .base import Base
 
 class FlightType(str, enum.Enum):
-    TRAINING = "training"
-    SOLO = "solo"
-    CROSS_COUNTRY = "cross_country"
-    NIGHT = "night"
-    INSTRUMENT = "instrument"
+    training = "training"
+    solo = "solo"
+    cross_country = "cross_country"
+    night = "night"
+    instrument = "instrument"
 
 class FlightStatus(str, enum.Enum):
-    SCHEDULED = "scheduled"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-    IN_PROGRESS = "in_progress"
+    scheduled = "scheduled"
+    completed = "completed"
+    cancelled = "cancelled"
+    in_progress = "in_progress"
 
 class User(Base):
     __tablename__ = "users"
@@ -25,7 +24,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    full_name = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
     phone = Column(String)
     address = Column(String)
     medical_class = Column(String)
@@ -48,7 +48,8 @@ class Aircraft(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     registration = Column(String, unique=True, index=True)
-    make_model = Column(String)
+    type = Column(String)
+    model = Column(String)
     year = Column(Integer)
     serial_number = Column(String)
     total_time = Column(Float)
@@ -70,12 +71,12 @@ class Instructor(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
-    full_name = Column(String)
+    hashed_password = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
     phone = Column(String)
-    ratings = Column(String)
-    endorsements = Column(String)
-    flight_reviews = Column(String)
-    currency = Column(String)
+    rating = Column(String)
+    is_active = Column(Boolean, default=True)
     availability = Column(String)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -95,6 +96,7 @@ class Flight(Base):
     status = Column(Enum(FlightStatus))
     start_time = Column(DateTime)
     end_time = Column(DateTime)
+    duration = Column(Float)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

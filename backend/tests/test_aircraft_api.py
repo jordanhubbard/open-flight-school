@@ -7,7 +7,8 @@ def test_create_aircraft(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -22,7 +23,8 @@ def test_create_aircraft(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["registration"] == aircraft_data["registration"]
-    assert data["make_model"] == aircraft_data["make_model"]
+    assert data["type"] == aircraft_data["type"]
+    assert data["model"] == aircraft_data["model"]
     assert "id" in data
 
 def test_create_aircraft_duplicate_registration(client: TestClient):
@@ -30,7 +32,8 @@ def test_create_aircraft_duplicate_registration(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -56,7 +59,8 @@ def test_get_aircrafts(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data1 = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -69,7 +73,8 @@ def test_get_aircrafts(client: TestClient):
     }
     aircraft_data2 = {
         "registration": "N54321",
-        "make_model": "Piper PA-28",
+        "type": "Piper",
+        "model": "PA-28",
         "year": 2019,
         "serial_number": "28201234",
         "total_time": 1500,
@@ -96,7 +101,8 @@ def test_get_aircraft(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -115,7 +121,8 @@ def test_get_aircraft(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data["registration"] == aircraft_data["registration"]
-    assert data["make_model"] == aircraft_data["make_model"]
+    assert data["type"] == aircraft_data["type"]
+    assert data["model"] == aircraft_data["model"]
 
 def test_get_aircraft_not_found(client: TestClient):
     response = client.get("/api/v1/aircraft/999")
@@ -128,7 +135,8 @@ def test_update_aircraft(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -159,7 +167,8 @@ def test_update_aircraft_not_found(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,
@@ -180,7 +189,8 @@ def test_delete_aircraft(client: TestClient):
     next_maintenance = (datetime.now() + timedelta(days=30)).isoformat()
     aircraft_data = {
         "registration": "N12345",
-        "make_model": "Cessna 172",
+        "type": "Cessna",
+        "model": "172",
         "year": 2020,
         "serial_number": "17201234",
         "total_time": 1000,

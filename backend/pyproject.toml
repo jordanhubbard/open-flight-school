@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-flight-school"
+version = "0.1.0"
+description = "Flight school management system"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "pydantic",
+    "python-jose",
+    "passlib",
+    "python-multipart",
+    "pytest",
+    "requests",
+    "alembic",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
+]
+testpaths = [
+    "tests",
+] 

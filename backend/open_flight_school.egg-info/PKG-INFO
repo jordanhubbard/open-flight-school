@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: open-flight-school
+Version: 0.1.0
+Summary: Flight school management system
+Requires-Python: >=3.11
+Dynamic: requires-python

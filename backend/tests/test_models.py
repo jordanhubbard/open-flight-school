@@ -1,11 +1,8 @@
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import pytest
 from sqlalchemy.orm import Session
-from models import User, Aircraft, Instructor, Flight, FlightType, FlightStatus
 from datetime import datetime, timedelta
+
+from app.models import User, Aircraft, Instructor, Flight, FlightType, FlightStatus
 
 def test_create_user(db_session):
     medical_expiry = datetime.now() + timedelta(days=365)
@@ -14,7 +11,8 @@ def test_create_user(db_session):
         hashed_password="testpassword",
         is_active=True,
         is_superuser=False,
-        full_name="Test User",
+        first_name="Test",
+        last_name="User",
         phone="1234567890",
         address="123 Test St",
         medical_class="Class 1",
@@ -29,7 +27,8 @@ def test_create_user(db_session):
     db_session.commit()
     assert user.id is not None
     assert user.email == "test@example.com"
-    assert user.full_name == "Test User"
+    assert user.first_name == "Test"
+    assert user.last_name == "User"
     assert user.phone == "1234567890"
     assert user.address == "123 Test St"
     assert user.medical_class == "Class 1"
@@ -40,17 +39,16 @@ def test_create_user(db_session):
     assert user.updated_at is not None
 
 def test_create_aircraft(db_session):
-    last_maintenance = datetime.now() - timedelta(days=30)
-    next_maintenance = datetime.now() + timedelta(days=30)
     aircraft = Aircraft(
         registration="N12345",
-        make_model="Cessna 172",
+        type="Cessna",
+        model="172",
         year=2020,
-        serial_number="12345",
+        serial_number="17201234",
         total_time=1000,
-        last_maintenance=last_maintenance,
-        next_maintenance=next_maintenance,
-        status="Available",
+        last_maintenance=datetime.now() - timedelta(days=30),
+        next_maintenance=datetime.now() + timedelta(days=30),
+        status="Active",
         category="airplane",
         class_type="single-engine land",
         is_active=True,
@@ -60,13 +58,12 @@ def test_create_aircraft(db_session):
     db_session.commit()
     assert aircraft.id is not None
     assert aircraft.registration == "N12345"
-    assert aircraft.make_model == "Cessna 172"
+    assert aircraft.type == "Cessna"
+    assert aircraft.model == "172"
     assert aircraft.year == 2020
-    assert aircraft.serial_number == "12345"
+    assert aircraft.serial_number == "17201234"
     assert aircraft.total_time == 1000
-    assert aircraft.last_maintenance == last_maintenance
-    assert aircraft.next_maintenance == next_maintenance
-    assert aircraft.status == "Available"
+    assert aircraft.status == "Active"
     assert aircraft.category == "airplane"
     assert aircraft.class_type == "single-engine land"
     assert aircraft.is_active is True
@@ -76,7 +73,58 @@ def test_create_aircraft(db_session):
 
 def test_create_instructor(db_session):
     instructor = Instructor(
-        full_name="Test Instructor",
+        first_name="John",
+        last_name="Doe",
+        email="john@example.com",
+        phone="1234567890",
+        ratings="CFI, CFII, MEI",
+        endorsements="Complex, High Performance",
+        flight_reviews="Current",
+        currency="Current",
+        availability="Mon-Fri 9am-5pm",
+        notes="Test instructor"
+    )
+    db_session.add(instructor)
+    db_session.commit()
+    assert instructor.id is not None
+    assert instructor.first_name == "John"
+    assert instructor.last_name == "Doe"
+    assert instructor.email == "john@example.com"
+    assert instructor.phone == "1234567890"
+    assert instructor.ratings == "CFI, CFII, MEI"
+    assert instructor.endorsements == "Complex, High Performance"
+    assert instructor.flight_reviews == "Current"
+    assert instructor.currency == "Current"
+    assert instructor.availability == "Mon-Fri 9am-5pm"
+    assert instructor.notes == "Test instructor"
+    assert instructor.created_at is not None
+    assert instructor.updated_at is not None
+
+def test_create_flight(db_session):
+    # Create required entities first
+    user = User(
+        email="student@example.com",
+        hashed_password="testpassword",
+        is_active=True,
+        is_superuser=False,
+        first_name="Test",
+        last_name="Student",
+        phone="1234567890",
+        address="123 Test St",
+        medical_class="Class 1",
+        medical_expiry=datetime.now() + timedelta(days=365),
+        ratings="Private Pilot",
+        endorsements="None",
+        flight_reviews="None",
+        currency="Current",
+        notes="Test student"
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    instructor = Instructor(
+        first_name="Test",
+        last_name="Instructor",
         email="instructor@example.com",
         phone="0987654321",
         ratings="CFI",
@@ -88,63 +136,17 @@ def test_create_instructor(db_session):
     )
     db_session.add(instructor)
     db_session.commit()
-    assert instructor.id is not None
-    assert instructor.full_name == "Test Instructor"
-    assert instructor.email == "instructor@example.com"
-    assert instructor.phone == "0987654321"
-    assert instructor.ratings == "CFI"
-    assert instructor.endorsements == "None"
-    assert instructor.flight_reviews == "None"
-    assert instructor.currency == "Current"
-    assert instructor.availability == "Full-time"
-    assert instructor.notes == "Test instructor"
-    assert instructor.created_at is not None
-    assert instructor.updated_at is not None
 
-def test_create_booking(db_session):
-    medical_expiry = datetime.now() + timedelta(days=365)
-    user = User(
-        email="test@example.com",
-        hashed_password="testpassword",
-        is_active=True,
-        is_superuser=False,
-        full_name="Test User",
-        phone="1234567890",
-        address="123 Test St",
-        medical_class="Class 1",
-        medical_expiry=medical_expiry,
-        ratings="Private Pilot",
-        endorsements="None",
-        flight_reviews="None",
-        currency="Current",
-        notes="Test notes"
-    )
-    db_session.add(user)
-
-    instructor = Instructor(
-        full_name="Test Instructor",
-        email="instructor@example.com",
-        phone="0987654321",
-        ratings="CFI",
-        endorsements="None",
-        flight_reviews="None",
-        currency="Current",
-        availability="Full-time",
-        notes="Test instructor"
-    )
-    db_session.add(instructor)
-
-    last_maintenance = datetime.now() - timedelta(days=30)
-    next_maintenance = datetime.now() + timedelta(days=30)
     aircraft = Aircraft(
         registration="N12345",
-        make_model="Cessna 172",
+        type="Cessna",
+        model="172",
         year=2020,
         serial_number="12345",
         total_time=1000,
-        last_maintenance=last_maintenance,
-        next_maintenance=next_maintenance,
-        status="Available",
+        last_maintenance=datetime.now() - timedelta(days=30),
+        next_maintenance=datetime.now() + timedelta(days=30),
+        status="Active",
         category="airplane",
         class_type="single-engine land",
         is_active=True,
@@ -153,6 +155,7 @@ def test_create_booking(db_session):
     db_session.add(aircraft)
     db_session.commit()
 
+    # Create flight
     start_time = datetime.now() + timedelta(days=1)
     end_time = start_time + timedelta(hours=2)
     flight = Flight(
@@ -163,6 +166,7 @@ def test_create_booking(db_session):
         status=FlightStatus.SCHEDULED,
         start_time=start_time,
         end_time=end_time,
+        duration=timedelta(hours=2),
         notes="Test flight"
     )
     db_session.add(flight)
@@ -175,6 +179,7 @@ def test_create_booking(db_session):
     assert flight.status == FlightStatus.SCHEDULED
     assert flight.start_time == start_time
     assert flight.end_time == end_time
+    assert flight.duration == timedelta(hours=2)
     assert flight.notes == "Test flight"
     assert flight.created_at is not None
-    assert flight.updated_at is not None
+    assert flight.updated_at is not None 

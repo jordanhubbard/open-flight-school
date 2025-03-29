@@ -26,11 +26,11 @@ clean:
 
 # Initialize the database with migrations
 init:
-	docker compose up -d db
+	docker compose up -d postgres
 	sleep 5  # Wait for database to be ready
-	docker compose exec db psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
-	docker compose exec db psql -U postgres -c "CREATE DATABASE flight_school;"
-	docker compose exec db psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+	docker compose exec postgres psql -U postgres -c "DROP DATABASE IF EXISTS flight_school;"
+	docker compose exec postgres psql -U postgres -c "CREATE DATABASE flight_school;"
+	docker compose exec postgres psql -U postgres -d flight_school -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 	docker compose run --rm backend alembic init alembic || true
 	docker compose run --rm backend alembic revision --autogenerate -m "Initial migration"
 	docker compose run --rm backend alembic upgrade head

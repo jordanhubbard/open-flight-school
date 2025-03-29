@@ -1,46 +1,36 @@
-import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+import os
 
-# Import from parent directory
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.main import app
+from app.database import get_db
+from app.base import Base
+from app.config import settings
 
-from database import Base, get_db
-from main import app
-
-# Use a separate test database
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@postgres:5432/test_db"
+# Test database URL
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/test_db")
 
 @pytest.fixture(scope="session")
 def engine():
+    """Create a clean test database and return an engine instance."""
     engine = create_engine(
-        SQLALCHEMY_DATABASE_URL,
-        poolclass=StaticPool,
-        pool_pre_ping=True
+        TEST_DATABASE_URL,
+        pool_pre_ping=True,
+        connect_args={'options': '-c timezone=utc'}
     )
-    Base.metadata.drop_all(bind=engine)
+    
+    # Create all tables
     Base.metadata.create_all(bind=engine)
     return engine
 
 @pytest.fixture(scope="function")
 def db_session(engine):
+    """Return a session with a transaction that will be rolled back."""
     connection = engine.connect()
     transaction = connection.begin()
-    Session = sessionmaker(bind=connection)
-    session = Session()
-
-    # Get all table names in reverse order (to handle foreign key constraints)
-    inspector = inspect(engine)
-    table_names = sorted([table_name for table_name in inspector.get_table_names()], reverse=True)
-
-    # Truncate all tables before each test
-    for table in table_names:
-        session.execute(text(f'TRUNCATE TABLE {table} CASCADE'))
-    session.commit()
+    session = Session(bind=connection)
 
     yield session
 
@@ -50,13 +40,13 @@ def db_session(engine):
 
 @pytest.fixture(scope="function")
 def client(db_session):
+    """Return a test client that uses the transactional session."""
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-    
-    app.dependency_overrides = {}
+
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client

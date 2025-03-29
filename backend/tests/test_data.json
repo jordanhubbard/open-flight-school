@@ -3,7 +3,8 @@
         {
             "email": "test@example.com",
             "hashed_password": "hashed_password",
-            "full_name": "Test User",
+            "first_name": "Test",
+            "last_name": "User",
             "is_active": true,
             "is_superuser": false,
             "phone": "1234567890",
@@ -19,7 +20,8 @@
         {
             "email": "instructor@example.com",
             "hashed_password": "hashed_password",
-            "full_name": "Test Instructor",
+            "first_name": "Test",
+            "last_name": "Instructor",
             "is_active": true,
             "is_superuser": false,
             "phone": "0987654321",
@@ -36,7 +38,8 @@
     "aircraft": [
         {
             "registration": "N12345",
-            "make_model": "Cessna 172",
+            "type": "Cessna",
+            "model": "172",
             "year": 2020,
             "serial_number": "17201234",
             "total_time": 1000,
@@ -50,7 +53,8 @@
         },
         {
             "registration": "N54321",
-            "make_model": "Piper PA-28",
+            "type": "Piper",
+            "model": "PA-28",
             "year": 2019,
             "serial_number": "28201234",
             "total_time": 1500,
@@ -65,24 +69,24 @@
     ],
     "instructors": [
         {
-            "full_name": "John Doe",
+            "first_name": "John",
+            "last_name": "Doe",
             "email": "john@example.com",
+            "hashed_password": "hashed_password",
             "phone": "1234567890",
-            "ratings": "CFI, CFII, MEI",
-            "endorsements": "Complex, High Performance",
-            "flight_reviews": "Current",
-            "currency": "Current",
+            "rating": "CFI, CFII, MEI",
+            "is_active": true,
             "availability": "Mon-Fri 9am-5pm",
             "notes": "Test instructor 1"
         },
         {
-            "full_name": "Jane Smith",
+            "first_name": "Jane",
+            "last_name": "Smith",
             "email": "jane@example.com",
+            "hashed_password": "hashed_password",
             "phone": "0987654321",
-            "ratings": "CFI, CFII",
-            "endorsements": "Complex",
-            "flight_reviews": "Current",
-            "currency": "Current",
+            "rating": "CFI, CFII",
+            "is_active": true,
             "availability": "Weekends",
             "notes": "Test instructor 2"
         }
@@ -91,21 +95,23 @@
         {
             "student_id": 1,
             "instructor_id": 1,
-            "aircraft_id": 1,
-            "flight_type": "dual",
+            "aircraft_id": 17,
+            "flight_type": "training",
             "status": "scheduled",
             "start_time": "2024-03-20T10:00:00",
             "end_time": "2024-03-20T11:00:00",
+            "duration": 1.0,
             "notes": "Test flight 1"
         },
         {
             "student_id": 1,
             "instructor_id": 2,
-            "aircraft_id": 2,
+            "aircraft_id": 18,
             "flight_type": "solo",
             "status": "scheduled",
             "start_time": "2024-03-21T10:00:00",
             "end_time": "2024-03-21T11:00:00",
+            "duration": 1.0,
             "notes": "Test flight 2"
         }
     ]

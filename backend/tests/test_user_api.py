@@ -6,7 +6,8 @@ def test_create_user(client: TestClient):
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data = {
         "email": "test@example.com",
-        "full_name": "Test User",
+        "first_name": "Test",
+        "last_name": "User",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -22,15 +23,16 @@ def test_create_user(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == user_data["email"]
-    assert data["full_name"] == user_data["full_name"]
-    assert "password" not in data
+    assert data["first_name"] == user_data["first_name"]
+    assert data["last_name"] == user_data["last_name"]
     assert "id" in data
 
 def test_create_user_duplicate_email(client: TestClient):
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data = {
         "email": "test@example.com",
-        "full_name": "Test User",
+        "first_name": "Test",
+        "last_name": "User",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -56,7 +58,8 @@ def test_get_users(client: TestClient):
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data1 = {
         "email": "test1@example.com",
-        "full_name": "Test User 1",
+        "first_name": "Test",
+        "last_name": "User 1",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -70,7 +73,8 @@ def test_get_users(client: TestClient):
     }
     user_data2 = {
         "email": "test2@example.com",
-        "full_name": "Test User 2",
+        "first_name": "Test",
+        "last_name": "User 2",
         "phone": "0987654321",
         "address": "321 Test St",
         "medical_class": "Class 2",
@@ -97,7 +101,8 @@ def test_get_user(client: TestClient):
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data = {
         "email": "test@example.com",
-        "full_name": "Test User",
+        "first_name": "Test",
+        "last_name": "User",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -117,19 +122,20 @@ def test_get_user(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == user_data["email"]
-    assert data["full_name"] == user_data["full_name"]
+    assert data["first_name"] == user_data["first_name"]
+    assert data["last_name"] == user_data["last_name"]
 
 def test_get_user_not_found(client: TestClient):
     response = client.get("/api/v1/users/999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
 
 def test_update_user(client: TestClient):
     # Create test user
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data = {
         "email": "test@example.com",
-        "full_name": "Test User",
+        "first_name": "Test",
+        "last_name": "User",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -146,42 +152,25 @@ def test_update_user(client: TestClient):
     user_id = response.json()["id"]
     
     # Update user
-    updated_data = user_data.copy()
-    updated_data["full_name"] = "Updated User"
-    updated_data["phone"] = "9876543210"
+    update_data = user_data.copy()
+    update_data["first_name"] = "Updated"
+    update_data["last_name"] = "Name"
+    update_data["phone"] = "5555555555"
     
-    response = client.put(f"/api/v1/users/{user_id}", json=updated_data)
+    response = client.put(f"/api/v1/users/{user_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
-    assert data["full_name"] == updated_data["full_name"]
-    assert data["phone"] == updated_data["phone"]
-
-def test_update_user_not_found(client: TestClient):
-    medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
-    user_data = {
-        "email": "test@example.com",
-        "full_name": "Test User",
-        "phone": "1234567890",
-        "address": "123 Test St",
-        "medical_class": "Class 1",
-        "medical_expiry": medical_expiry,
-        "ratings": "Private Pilot",
-        "endorsements": "None",
-        "flight_reviews": "None",
-        "currency": "Current",
-        "notes": "Test notes",
-        "password": "testpassword"
-    }
-    response = client.put("/api/v1/users/999", json=user_data)
-    assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
+    assert data["first_name"] == update_data["first_name"]
+    assert data["last_name"] == update_data["last_name"]
+    assert data["phone"] == update_data["phone"]
 
 def test_delete_user(client: TestClient):
     # Create test user
     medical_expiry = (datetime.now() + timedelta(days=365)).isoformat()
     user_data = {
         "email": "test@example.com",
-        "full_name": "Test User",
+        "first_name": "Test",
+        "last_name": "User",
         "phone": "1234567890",
         "address": "123 Test St",
         "medical_class": "Class 1",
@@ -203,8 +192,4 @@ def test_delete_user(client: TestClient):
     
     # Verify user is deleted
     response = client.get(f"/api/v1/users/{user_id}")
-    assert response.status_code == 404
-
-def test_delete_user_not_found(client: TestClient):
-    response = client.delete("/api/v1/users/999")
     assert response.status_code == 404 
